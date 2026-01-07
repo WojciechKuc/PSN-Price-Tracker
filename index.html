@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PSN Tracker - Fixed Format</title>
+    <title>PSN Manager v11.8 - Fixed & Restored</title>
     <style>
         :root { 
             --ps-blue: #0056a3; 
@@ -23,49 +23,110 @@
         
         .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .rates-info { font-size: 11px; color: #666; background: #1a1a1a; padding: 5px 15px; border-radius: 20px; border: 1px solid var(--border); }
-        
+        .btn-backup { background: #333; color: #aaa; border: 1px solid #444; padding: 6px 15px; border-radius: 6px; cursor: pointer; font-size: 11px; transition: 0.2s; }
+        .btn-backup:hover { background: #444; color: white; }
+
         .main-box { background: var(--ps-card); padding: 25px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 30px; }
         
-        .flex-row { display: flex; gap: 10px; margin-bottom: 15px; }
-        input, select { background: #252525; border: 1px solid var(--border); color: white; padding: 12px; border-radius: 6px; outline: none; width: 100%; box-sizing: border-box; }
+        .search-row { display: flex; gap: 10px; margin-bottom: 15px; align-items: stretch; }
+        .search-row input { flex: 1; } 
         
-        /* Styl pola do wklejania */
-        .smart-paste { border: 1px solid var(--ps-blue) !important; background: #0d1b2a !important; color: #fff; }
+        .btn-search-compact { 
+            background: var(--ps-blue); color: white; text-decoration: none; 
+            padding: 0 20px; border-radius: 6px; display: flex; align-items: center; 
+            font-size: 12px; font-weight: bold; text-transform: uppercase; border: none;
+            white-space: nowrap; transition: 0.2s;
+        }
+        .btn-search-compact:hover { background: #004480; }
+
+        .flex-row { display: flex; gap: 10px; margin-bottom: 15px; }
+        input, select { 
+            background: #252525; border: 1px solid var(--border); color: white; 
+            padding: 12px; border-radius: 6px; outline: none; font-size: 14px; width: 100%; box-sizing: border-box;
+        }
+        input:focus { border-color: #555; }
+
+        /* Styl pola Smart Paste (z Twojego screena) */
+        .smart-paste { 
+            border: 1px solid var(--ps-blue) !important; 
+            background: #0d1b2a !important; 
+            color: #fff; 
+        }
         .smart-paste:focus { border-color: #4caf50 !important; }
 
         .btn-api { background: var(--btn-api); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; padding: 0 20px; white-space: nowrap; }
 
         .region-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
-        .reg-btn { padding: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 12px; }
+        .reg-btn { padding: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 12px; transition: 0.2s; }
         .bg-pl { background: var(--btn-pl); } .bg-tr { background: var(--btn-tr); }
         .bg-in { background: var(--btn-in); } .bg-ua { background: var(--btn-ua); }
+        .reg-btn:hover { filter: brightness(1.2); }
+
+        .price-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
 
         .btn-save { background: #2e7d32; color: white; border: none; padding: 15px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; text-transform: uppercase; }
+        .btn-save:hover { background: #1b5e20; }
+
+        /* MODAL */
+        #regionModal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; }
+        .modal-content { background: #222; padding: 25px; border-radius: 10px; border: 1px solid #444; width: 300px; }
+        .modal-btn { background: var(--ps-blue); color: white; border: none; padding: 12px; width: 100%; margin-top: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-left: 10px; border-left: 4px solid; height: 30px; }
+        .search-bar { width: 200px; padding: 6px 10px; border-radius: 15px; border: 1px solid #333; background: #1a1a1a; color: white; font-size: 12px; margin: 0; outline: none; }
         
         table { width: 100%; border-collapse: collapse; background: var(--ps-card); border-radius: 8px; overflow: hidden; margin-bottom: 30px; border: 1px solid var(--border); }
-        th { background: #252525; padding: 12px; font-size: 11px; color: #777; text-align: center; }
-        td { padding: 12px; border-bottom: 1px solid #252525; text-align: center; font-size: 14px; }
-        .title-cell { text-align: left; padding-left: 15px; }
+        th { background: #252525; padding: 12px; font-size: 11px; color: #777; text-align: center; text-transform: uppercase; }
+        td { padding: 12px; border-bottom: 1px solid #252525; font-size: 16px; text-align: center; vertical-align: middle; }
+        .title-cell { text-align: left; padding-left: 15px; width: 35%; }
+
+        .action-group { display: flex; gap: 5px; justify-content: center; }
+        .btn-tab { width: 34px; height: 34px; border-radius: 4px; border: 1px solid #333; background: #2a2a2a; color: #888; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+        .btn-edit:hover { background: #ef6c00; color: white; border-color: #ef6c00; }
+        .btn-buy:hover { background: #2e7d32; color: white; border-color: #2e7d32; }
+        .btn-del:hover { background: #8a1c1c; color: white; border-color: #8a1c1c; }
 
         .best-deal { color: var(--best-price); font-weight: bold; border: 1px solid rgba(255, 215, 0, 0.2); padding: 2px 6px; border-radius: 4px; display: inline-block; }
         .conv-val { display: block; font-size: 9px; color: #666; margin-top: 2px; }
-        
-        .btn-del { background: transparent; border: 1px solid #444; color: #888; cursor: pointer; border-radius: 4px; padding: 5px 10px; }
-        .btn-del:hover { background: #8a1c1c; color: white; border-color: #8a1c1c; }
+        .tag-reg { font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: bold; color: white; }
+
+        .links-section { margin-top: 40px; padding-top: 20px; border-top: 1px solid #333; text-align: center; }
+        .links-title { font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; }
+        .links-grid { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
+        .link-btn { display: flex; align-items: center; gap: 8px; background: #252525; color: #bbb; text-decoration: none; padding: 10px 20px; border-radius: 6px; border: 1px solid #333; font-size: 13px; transition: 0.2s; }
+        .link-btn:hover { background: #333; color: white; border-color: #555; transform: translateY(-2px); }
     </style>
 </head>
 <body>
 
+<div id="regionModal">
+    <div class="modal-content">
+        <h3 style="margin-top:0; color:#ccc">Gdzie kupiono?</h3>
+        <select id="modalRegionSelect"></select>
+        <button class="modal-btn" onclick="confirmMove()">POTWIERDŹ</button>
+        <button class="modal-btn" style="background:#444;" onclick="closeModal()">ANULUJ</button>
+    </div>
+</div>
+
 <div class="container">
     <div class="top-bar">
         <div id="ratesDisplay" class="rates-info">Kursy walut: Pobieranie...</div>
-        <button onclick="exportData()" class="btn-del">💾 Backup</button>
+        <div>
+            <button class="btn-backup" onclick="exportData()">📤 EKSPORT</button>
+            <button class="btn-backup" onclick="document.getElementById('importFile').click()">📥 IMPORT</button>
+            <input type="file" id="importFile" style="display:none" onchange="importData(this)">
+        </div>
     </div>
 
     <div class="main-box">
+        <div class="search-row">
+            <input type="text" id="searchInp" placeholder="Wpisz nazwę gry..." oninput="syncSearch()">
+            <a id="psLink" href="#" target="_blank" class="btn-search-compact">🔍 ZNAJDŹ ID</a>
+        </div>
+
         <div class="flex-row">
-            <input type="text" id="gameId" placeholder="ID Gry lub Link (np. EP4609-...)" oninput="extractId()">
-            <button class="btn-api" onclick="alert('Użyj pola poniżej do wklejania cen!')">⚡ API</button>
+            <input type="text" id="gameId" placeholder="Product ID (lub link)" style="flex: 2;">
+            <button class="btn-api" onclick="alert('Użyj pola poniżej do wklejania!')">⚡ API</button>
         </div>
 
         <div class="flex-row">
@@ -73,9 +134,9 @@
         </div>
 
         <div class="flex-row">
-            <input type="text" id="gameName" placeholder="Nazwa gry">
+            <input type="text" id="gameName" placeholder="Nazwa gry" style="flex: 2;">
             <select id="gameEd" style="max-width: 150px;">
-                <option>Standard</option><option>Deluxe</option><option>Ultimate</option><option>GOTY</option>
+                <option>Standard</option><option>Deluxe</option><option>Gold</option><option>Ultimate</option><option>GOTY</option>
             </select>
         </div>
 
@@ -86,7 +147,7 @@
             <button class="reg-btn bg-ua" onclick="openPsn('en-ua')">UA 🇺🇦</button>
         </div>
 
-        <div class="flex-row">
+        <div class="price-grid">
             <input type="number" id="pPL" placeholder="PLN">
             <input type="number" id="pTR" placeholder="TRY">
             <input type="number" id="pIN" placeholder="INR">
@@ -96,40 +157,70 @@
         <button class="btn-save" onclick="saveGame()">ZAPISZ GRĘ</button>
     </div>
 
-    <h3 style="color:var(--ps-blue); border-bottom: 2px solid var(--ps-blue); padding-bottom:5px;">WATCHLISTA</h3>
+    <div class="section-header" style="border-color: var(--ps-blue);">
+        <span style="color:var(--ps-blue); font-weight:bold;">WATCHLISTA</span>
+        <input type="text" class="search-bar" id="wSearch" placeholder="Szukaj..." oninput="render()">
+    </div>
     <table>
-        <thead><tr><th>Gra</th><th>PLN</th><th>TRY</th><th>INR</th><th>UAH</th><th>Akcja</th></tr></thead>
+        <thead><tr><th>Gra / Edycja</th><th>PLN</th><th>TRY</th><th>INR</th><th>UAH</th><th>Akcje</th></tr></thead>
         <tbody id="wBody"></tbody>
     </table>
+
+    <div class="section-header" style="border-color: #2e7d32;">
+        <span style="color:#2e7d32; font-weight:bold;">KOLEKCJA</span>
+        <input type="text" class="search-bar" id="cSearch" placeholder="Szukaj..." oninput="render()">
+    </div>
+    <table>
+        <thead><tr><th>Tytuł</th><th>Region</th><th>Data</th><th>Opcje</th></tr></thead>
+        <tbody id="cBody"></tbody>
+    </table>
+
+    <div class="links-section">
+        <div class="links-title">🔗 SZYBKIE DOŁADOWANIA PORTFELA</div>
+        <div class="links-grid">
+            <a href="https://gg.deals/gift-cards-group/playstation-network-card-try-turkey/" target="_blank" class="link-btn">🇹🇷 Turcja</a>
+            <a href="https://gg.deals/gift-cards-group/playstation-network-card-inr-india/" target="_blank" class="link-btn">🇮🇳 Indie</a>
+            <a href="https://www.amazon.in/Playstation-Gift-Redeemable-Flat-Cashback/dp/B0C1H473H8?th=1&gpo=1000" target="_blank" class="link-btn">🛒 Amazon India</a>
+        </div>
+    </div>
 </div>
 
 <script>
     const KEY_W = "PSN_WATCHLIST";
-    // Domyślne kursy
+    const KEY_C = "PSN_COLLECTION";
     let rates = { TRY: 0.12, INR: 0.048, UAH: 0.10 };
+    let tempId = null;
 
-    /* --- FUNKCJA NAPRAWIAJĄCA FORMATY CEN --- */
+    async function fetchRates() {
+        try {
+            const res = await fetch('https://open.er-api.com/v6/latest/PLN');
+            const data = await res.json();
+            if(data?.rates) {
+                rates.TRY = 1 / data.rates.TRY; rates.INR = 1 / data.rates.INR; rates.UAH = 1 / data.rates.UAH;
+                document.getElementById('ratesDisplay').innerText = `Kursy: TRY=${rates.TRY.toFixed(3)} | INR=${rates.INR.toFixed(3)} | UAH=${rates.UAH.toFixed(3)}`;
+            }
+        } catch (e) {}
+        render();
+    }
+
+    /* --- NOWE FUNKCJE CZYSZCZĄCE (V11.7) --- */
     function cleanPrice(val, currency) {
         if (!val) return '';
         let str = val.toString();
-
         if (currency === 'INR') {
-            // INDIE: Usuwa wszystkie przecinki (1,299 -> 1299) i spacje
+            // INDIE: Usuwa przecinki (1,299 -> 1299)
             return str.replace(/,/g, '').replace(/\s/g, '');
-        } 
-        else if (currency === 'TRY') {
-            // TURCJA: Usuwa kropki tysięczne, zamienia przecinek na kropkę (1.299,50 -> 1299.50)
+        } else if (currency === 'TRY') {
+            // TURCJA: Usuwa kropki, przecinek na kropkę
             str = str.replace(/\./g, ''); 
             str = str.replace(',', '.');
             return str;
-        } 
-        else {
-            // RESZTA (PLN/UAH): Zamienia przecinek na kropkę, usuwa spacje
+        } else {
             return str.replace(/\s/g, '').replace(',', '.');
         }
     }
 
-    /* --- LOGIKA WKLEJANIA --- */
+    /* --- LOGIKA WKLEJANIA (V11.7) --- */
     function processPaste() {
         const input = document.getElementById('smartPaste');
         const val = input.value;
@@ -141,7 +232,6 @@
         if (match) {
             let rawNum = match[1].trim();
             const currStr = match[2].toUpperCase();
-            
             let targetId = '';
             let code = '';
 
@@ -151,11 +241,9 @@
             else if (['ГРН', 'UAH'].includes(currStr)) { targetId = 'pUA'; code = 'UAH'; }
 
             if (targetId) {
-                // Czyścimy i wstawiamy
                 const cleanVal = cleanPrice(rawNum, code);
                 document.getElementById(targetId).value = cleanVal;
                 
-                // Reset pola
                 input.style.borderColor = "#4caf50";
                 input.value = `✅ OK: ${cleanVal}`;
                 setTimeout(() => { 
@@ -166,55 +254,38 @@
         }
     }
 
-    function extractId() {
-        let val = document.getElementById('gameId').value;
-        if(val.includes('product/')) {
-            val = val.split('product/')[1].split('/')[0].split('?')[0];
-            document.getElementById('gameId').value = val;
-        }
+    function syncSearch() {
+        const val = document.getElementById('searchInp').value;
+        document.getElementById('psLink').href = "https://store.playstation.com/pl-pl/search/" + encodeURIComponent(val);
+        document.getElementById('gameName').value = val;
     }
 
     function openPsn(loc) {
-        const id = document.getElementById('gameId').value;
+        let id = document.getElementById('gameId').value;
+        if(id.includes('product/')) id = id.split('product/')[1].split('/')[0].split('?')[0];
         if(id) window.open(`https://store.playstation.com/${loc}/product/${id}`, '_blank');
-        else alert("Podaj najpierw ID!");
-    }
-
-    async function fetchRates() {
-        try {
-            const res = await fetch('https://open.er-api.com/v6/latest/PLN');
-            const data = await res.json();
-            if(data?.rates) {
-                rates.TRY = 1/data.rates.TRY; 
-                rates.INR = 1/data.rates.INR; 
-                rates.UAH = 1/data.rates.UAH;
-                document.getElementById('ratesDisplay').innerText = 
-                    `Kursy: TRY=${rates.TRY.toFixed(3)} | INR=${rates.INR.toFixed(3)} | UAH=${rates.UAH.toFixed(3)}`;
-            }
-        } catch(e) {}
-        render();
+        else alert("Wpisz najpierw ID!");
     }
 
     function saveGame() {
         const name = document.getElementById('gameName').value;
-        if(!name) return alert("Podaj nazwę!");
-        
+        if(!name) return alert("Podaj nazwę gry!");
+        let id = document.getElementById('gameId').value || Date.now().toString();
+
         let db = JSON.parse(localStorage.getItem(KEY_W) || '[]');
         
-        // Zbieranie i czyszczenie danych przed zapisem
-        const newEntry = {
-            id: document.getElementById('gameId').value || Date.now().toString(),
-            name: name, 
-            ed: document.getElementById('gameEd').value,
-            pl: cleanPrice(document.getElementById('pPL').value, 'PLN'),
-            tr: cleanPrice(document.getElementById('pTR').value, 'TRY'),
-            in: cleanPrice(document.getElementById('pIN').value, 'INR'),
-            ua: cleanPrice(document.getElementById('pUA').value, 'UAH')
+        // Zastosowanie CLEANPRICE przy zapisie!
+        const newGame = { 
+            id, name, 
+            ed: document.getElementById('gameEd').value, 
+            pl: cleanPrice(document.getElementById('pPL').value, 'PLN'), 
+            tr: cleanPrice(document.getElementById('pTR').value, 'TRY'), 
+            in: cleanPrice(document.getElementById('pIN').value, 'INR'), 
+            ua: cleanPrice(document.getElementById('pUA').value, 'UAH') 
         };
 
-        const idx = db.findIndex(x => x.id == newEntry.id);
-        if (idx > -1) db[idx] = newEntry; 
-        else db.push(newEntry);
+        const idx = db.findIndex(x => x.id == id);
+        if (idx > -1) db[idx] = newGame; else db.push(newGame);
 
         localStorage.setItem(KEY_W, JSON.stringify(db));
         
@@ -222,45 +293,109 @@
         render();
     }
 
-    function render() {
-        const dbW = JSON.parse(localStorage.getItem(KEY_W) || '[]');
-        document.getElementById('wBody').innerHTML = dbW.map(g => {
-            const plVal = parseFloat(g.pl)||0;
-            const trVal = (parseFloat(g.tr)*rates.TRY)||0;
-            const inVal = (parseFloat(g.in)*rates.INR)||0;
-            const uaVal = (parseFloat(g.ua)*rates.UAH)||0;
-
-            // Szukamy minimum (większego od 0)
-            const valid = [plVal, trVal, inVal, uaVal].filter(x => x > 0);
-            const min = valid.length ? Math.min(...valid) : 0;
-            const cl = (v) => (v > 0 && Math.abs(v - min) < 0.01) ? 'best-deal' : '';
-
-            return `<tr>
-                <td class="title-cell"><b>${g.name}</b><br><small style="color:#666">${g.ed}</small></td>
-                <td><div class="${cl(plVal)}">${g.pl||'-'}</div></td>
-                <td><div class="${cl(trVal)}">${g.tr||'-'}<span class="conv-val">${g.tr?(g.tr*rates.TRY).toFixed(2)+' zł':''}</span></div></td>
-                <td><div class="${cl(inVal)}">${g.in||'-'}<span class="conv-val">${g.in?(g.in*rates.INR).toFixed(2)+' zł':''}</span></div></td>
-                <td><div class="${cl(uaVal)}">${g.ua||'-'}<span class="conv-val">${g.ua?(g.ua*rates.UAH).toFixed(2)+' zł':''}</span></div></td>
-                <td><button class="btn-del" onclick="deleteItem('${g.id}')">❌</button></td>
-            </tr>`;
-        }).join('');
+    function editGame(id, source = 'W') {
+        const key = source === 'W' ? KEY_W : KEY_C;
+        const db = JSON.parse(localStorage.getItem(key));
+        const g = (source === 'W') ? db.find(x => x.id == id) : db[id];
+        if(!g) return;
+        document.getElementById('gameId').value = g.id || '';
+        document.getElementById('gameName').value = g.name;
+        document.getElementById('gameEd').value = g.ed;
+        document.getElementById('pPL').value = g.pl || '';
+        document.getElementById('pTR').value = g.tr || '';
+        document.getElementById('pIN').value = g.in || '';
+        document.getElementById('pUA').value = g.ua || '';
+        window.scrollTo({top:0, behavior:'smooth'});
     }
 
-    function deleteItem(id) {
+    function openModal(id) { 
+        tempId = id; 
+        const g = JSON.parse(localStorage.getItem(KEY_W)).find(x => x.id == id);
+        const sel = document.getElementById('modalRegionSelect');
+        sel.innerHTML = '';
+        const opts = [
+            {id:'PL', f:'🇵🇱', v: g.pl, r:1, c:'PLN'},
+            {id:'TR', f:'🇹🇷', v: g.tr, r:rates.TRY, c:'TRY'},
+            {id:'IN', f:'🇮🇳', v: g.in, r:rates.INR, c:'INR'},
+            {id:'UA', f:'🇺🇦', v: g.ua, r:rates.UAH, c:'UAH'}
+        ];
+        opts.forEach(o => {
+            const el = document.createElement('option');
+            el.value = o.id;
+            el.innerText = `${o.id} ${o.f} ${o.v ? '('+o.v+' '+o.c+' ≈ '+(o.v*o.r).toFixed(2)+' zł)' : ''}`;
+            sel.appendChild(el);
+        });
+        document.getElementById('regionModal').style.display = 'flex'; 
+    }
+
+    function confirmMove() {
+        const reg = document.getElementById('modalRegionSelect').value;
+        let dbW = JSON.parse(localStorage.getItem(KEY_W));
+        const g = dbW.find(x => x.id == tempId);
+        let dbC = JSON.parse(localStorage.getItem(KEY_C) || '[]');
+        dbC.push({ ...g, reg, date: new Date().toLocaleDateString() });
+        localStorage.setItem(KEY_C, JSON.stringify(dbC));
+        localStorage.setItem(KEY_W, JSON.stringify(dbW.filter(x => x.id != tempId)));
+        document.getElementById('regionModal').style.display = 'none'; render();
+    }
+
+    function closeModal() { document.getElementById('regionModal').style.display = 'none'; }
+
+    function deleteItem(id, key) {
         if(!confirm("Usunąć?")) return;
-        let db = JSON.parse(localStorage.getItem(KEY_W));
-        localStorage.setItem(KEY_W, JSON.stringify(db.filter(x => x.id != id)));
+        let db = JSON.parse(localStorage.getItem(key));
+        if(key === KEY_W) db = db.filter(x => x.id != id); else db.splice(id, 1);
+        localStorage.setItem(key, JSON.stringify(db));
         render();
     }
 
-    function exportData() {
-        const d = localStorage.getItem(KEY_W);
-        const a = document.createElement("a"); 
-        a.href = URL.createObjectURL(new Blob([d], {type:"application/json"}));
-        a.download="psn_backup.json"; 
-        a.click();
+    function render() {
+        const sW = document.getElementById('wSearch').value.toLowerCase();
+        const dbW = JSON.parse(localStorage.getItem(KEY_W) || '[]');
+        document.getElementById('wBody').innerHTML = dbW.filter(g => g.name.toLowerCase().includes(sW)).map(g => {
+            const v = [parseFloat(g.pl)||Infinity, (parseFloat(g.tr)*rates.TRY)||Infinity, (parseFloat(g.in)*rates.INR)||Infinity, (parseFloat(g.ua)*rates.UAH)||Infinity];
+            // Filtrujemy zera i nieskończoność
+            const valid = v.filter(x => x > 0 && x !== Infinity);
+            const min = valid.length ? Math.min(...valid) : 0;
+            const cl = (val) => (val > 0 && Math.abs(val - min) < 0.01) ? 'best-deal' : '';
+            
+            return `<tr>
+                <td class="title-cell"><b>${g.name}</b><br><small style="color:#666">${g.ed}</small></td>
+                <td><div class="${cl(v[0])}">${g.pl || '-'}</div></td>
+                <td><div class="${cl(v[1])}">${g.tr || '-'}<span class="conv-val">${g.tr?(g.tr*rates.TRY).toFixed(2)+' zł':''}</span></div></td>
+                <td><div class="${cl(v[2])}">${g.in || '-'}<span class="conv-val">${g.in?(g.in*rates.INR).toFixed(2)+' zł':''}</span></div></td>
+                <td><div class="${cl(v[3])}">${g.ua || '-'}<span class="conv-val">${g.ua?(g.ua*rates.UAH).toFixed(2)+' zł':''}</span></div></td>
+                <td><div class="action-group">
+                    <button class="btn-tab btn-edit" onclick="editGame('${g.id}', 'W')">✏️</button>
+                    <button class="btn-tab btn-buy" onclick="openModal('${g.id}')">🛒</button>
+                    <button class="btn-tab btn-del" onclick="deleteItem('${g.id}', KEY_W)">❌</button>
+                </div></td></tr>`;
+        }).join('');
+
+        const sC = document.getElementById('cSearch').value.toLowerCase();
+        const dbC = JSON.parse(localStorage.getItem(KEY_C) || '[]');
+        document.getElementById('cBody').innerHTML = dbC.filter(g => g.name.toLowerCase().includes(sC)).map((g, i) => {
+            let col = g.reg==='PL'?'#6b1414':g.reg==='TR'?'#4a2168':g.reg==='IN'?'#6b4515':'#153a68';
+            return `<tr>
+                <td class="title-cell"><b>${g.name}</b><br><small style="color:#666">${g.ed}</small></td>
+                <td><span class="tag-reg" style="background:${col}">${g.reg}</span></td>
+                <td>${g.date}</td>
+                <td><div class="action-group">
+                    <button class="btn-tab btn-edit" onclick="editGame(${i}, 'C')">✏️</button>
+                    <button class="btn-tab btn-del" onclick="deleteItem(${i}, KEY_C)">❌</button>
+                </div></td></tr>`;
+        }).join('');
     }
 
+    function exportData() {
+        const d = { w: localStorage.getItem(KEY_W), c: localStorage.getItem(KEY_C) };
+        const a = document.createElement("a"); a.href=URL.createObjectURL(new Blob([JSON.stringify(d)],{type:"application/json"}));
+        a.download="psn_backup.json"; a.click();
+    }
+    function importData(inp) {
+        const r = new FileReader(); r.onload = e => { const d = JSON.parse(e.target.result); localStorage.setItem(KEY_W, d.w); localStorage.setItem(KEY_C, d.c); render(); };
+        r.readAsText(inp.files[0]);
+    }
     window.onload = fetchRates;
 </script>
 </body>
