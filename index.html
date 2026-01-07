@@ -173,151 +173,191 @@ td { padding: 12px; border-bottom: 1px solid #252525; font-size: 16px; text-alig
 </div>
 
 <script>
-const KEY_W = "PSN_WATCHLIST";
-const KEY_C = "PSN_COLLECTION";
-let rates = { TRY: 0.12, INR: 0.048, UAH: 0.10 };
-let tempId = null;
+    const KEY_W = "PSN_WATCHLIST";
+    // Przybliżone kursy (możesz je aktualizować)
+    let rates = { TRY: 0.12, INR: 0.048, UAH: 0.10 };
 
-async function fetchRates() {
-try {
-const res = await fetch('https://open.er-api.com/v6/latest/PLN');
-const data = await res.json();
-if(data?.rates) {
-rates.TRY = 1 / data.rates.TRY; rates.INR = 1 / data.rates.INR; rates.UAH = 1 / data.rates.UAH;
-document.getElementById('ratesDisplay').innerText = `Kursy: TRY=${rates.TRY.toFixed(3)} | INR=${rates.INR.toFixed(3)} | UAH=${rates.UAH.toFixed(3)}`;
-}
-} catch (e) {}
-render();
-}
+    /* --- NOWA FUNKCJA CZYSZCZĄCA CENY --- */
+    function cleanPrice(val, currency) {
+        if (!val) return '';
+        // Zamień na string, jeśli to liczba
+        let str = val.toString();
 
-function syncSearch() {
-const val = document.getElementById('searchInp').value;
-document.getElementById('psLink').href = "https://store.playstation.com/pl-pl/search/" + encodeURIComponent(val);
-document.getElementById('gameName').value = val;
-}
+        if (currency === 'INR') {
+            // INDIE: Usuwamy przecinki (np. 1,299 -> 1299)
+            // Usuwamy też ewentualne spacje
+            return str.replace(/,/g, '').replace(/\s/g, '');
+        } 
+        else if (currency === 'TRY') {
+            // TURCJA: Format często to 1.299,00 (kropka to tysiące)
+            // 1. Usuwamy kropki (tysiące)
+            // 2. Zamieniamy przecinek na kropkę (grosze)
+            str = str.replace(/\./g, ''); 
+            str = str.replace(',', '.');
+            return str;
+        } 
+        else {
+            // PLN, UAH i inne:
+            // Zamieniamy przecinek na kropkę, usuwamy spacje (np. "1 200,50" -> "1200.50")
+            return str.replace(/\s/g, '').replace(',', '.');
+        }
+    }
 
-function openPsn(loc) {
-let id = document.getElementById('gameId').value;
-if(id.includes('product/')) id = id.split('product/')[1].split('/')[0].split('?')[0];
-if(id) window.open(`https://store.playstation.com/${loc}/product/${id}`, '_blank');
-else alert("Wpisz najpierw ID!");
-}
+    /* --- FUNKCJA INTELIGENTNEGO WKLEJANIA (ZAKTUALIZOWANA) --- */
+    function processPaste() {
+        const input = document.getElementById('smartPaste').value;
+        if (!input) return;
 
-function saveGame() {
-const name = document.getElementById('gameName').value;
-if(!name) return alert("Podaj nazwę gry!");
-let id = document.getElementById('gameId').value || Date.now().toString();
+        // Szukamy liczby w towarzystwie waluty
+        // Regex łapie formaty: 1.299,00 | 1,299 | 500 | 500.00
+        const match = input.match(/(\d[\d\s,.]*)\s*(TL|zł|₹|Rs|грн|UAH|INR|TRY|PLN)/i);
 
-let db = JSON.parse(localStorage.getItem(KEY_W) || '[]');
-const newGame = { id, name, ed: document.getElementById('gameEd').value, pl: document.getElementById('pPL').value, tr: document.getElementById('pTR').value, in: document.getElementById('pIN').value, ua: document.getElementById('pUA').value };
+        if (match) {
+            let rawVal = match[1].trim();
+            const currencyStr = match[2].toUpperCase();
 
-const idx = db.findIndex(x => x.id == id);
-if (idx > -1) db[idx] = newGame; else db.push(newGame);
+            let targetId = '';
+            let currencyCode = '';
 
-localStorage.setItem(KEY_W, JSON.stringify(db));
-['gameId','gameName','pPL','pTR','pIN','pUA'].forEach(f => document.getElementById(f).value = '');
-render();
-}
+            // Rozpoznawanie waluty i przypisanie pola
+            if (['TL', 'TRY'].includes(currencyStr)) {
+                targetId = 'pTR';
+                currencyCode = 'TRY';
+            } else if (['ZŁ', 'PLN'].includes(currencyStr)) {
+                targetId = 'pPL';
+                currencyCode = 'PLN';
+            } else if (['₹', 'RS', 'INR'].includes(currencyStr)) {
+                targetId = 'pIN';
+                currencyCode = 'INR';
+            } else if (['ГРН', 'UAH'].includes(currencyStr)) {
+                targetId = 'pUA';
+                currencyCode = 'UAH';
+            }
 
-function editGame(id, source = 'W') {
-const key = source === 'W' ? KEY_W : KEY_C;
-const db = JSON.parse(localStorage.getItem(key));
-const g = (source === 'W') ? db.find(x => x.id == id) : db[id];
-if(!g) return;
-document.getElementById('gameId').value = g.id || '';
-document.getElementById('gameName').value = g.name;
-document.getElementById('gameEd').value = g.ed;
-document.getElementById('pPL').value = g.pl || '';
-document.getElementById('pTR').value = g.tr || '';
-document.getElementById('pIN').value = g.in || '';
-document.getElementById('pUA').value = g.ua || '';
-window.scrollTo({top:0, behavior:'smooth'});
-}
+            if (targetId) {
+                // Używamy nowej funkcji czyszczącej
+                const cleanVal = cleanPrice(rawVal, currencyCode);
+                document.getElementById(targetId).value = cleanVal;
 
-function openModal(id) {
-tempId = id;
-const g = JSON.parse(localStorage.getItem(KEY_W)).find(x => x.id == id);
-const sel = document.getElementById('modalRegionSelect');
-sel.innerHTML = '';
-const opts = [
-{id:'PL', f:'🇵🇱', v: g.pl, r:1, c:'PLN'},
-{id:'TR', f:'🇹🇷', v: g.tr, r:rates.TRY, c:'TRY'},
-{id:'IN', f:'🇮🇳', v: g.in, r:rates.INR, c:'INR'},
-{id:'UA', f:'🇺🇦', v: g.ua, r:rates.UAH, c:'UAH'}
-];
-opts.forEach(o => {
-const el = document.createElement('option');
-el.value = o.id;
-el.innerText = `${o.id} ${o.f} ${o.v ? '('+o.v+' '+o.c+' ≈ '+(o.v*o.r).toFixed(2)+' zł)' : ''}`;
-sel.appendChild(el);
-});
-document.getElementById('regionModal').style.display = 'flex';
-}
+                // Efekt sukcesu
+                const pasteInput = document.getElementById('smartPaste');
+                pasteInput.style.borderColor = '#4caf50';
+                pasteInput.value = `✅ Dodano: ${cleanVal} (${currencyCode})`;
+                setTimeout(() => { 
+                    pasteInput.value = ""; 
+                    pasteInput.style.borderColor = "#0056a3"; // powrót do niebieskiego
+                }, 1000);
+            }
+        }
+    }
 
-function confirmMove() {
-const reg = document.getElementById('modalRegionSelect').value;
-let dbW = JSON.parse(localStorage.getItem(KEY_W));
-const g = dbW.find(x => x.id == tempId);
-let dbC = JSON.parse(localStorage.getItem(KEY_C) || '[]');
-dbC.push({ ...g, reg, date: new Date().toLocaleDateString() });
-localStorage.setItem(KEY_C, JSON.stringify(dbC));
-localStorage.setItem(KEY_W, JSON.stringify(dbW.filter(x => x.id != tempId)));
-document.getElementById('regionModal').style.display = 'none'; render();
-}
+    function extractId() {
+        let val = document.getElementById('gameId').value;
+        if(val.includes('product/')) {
+            // Wyciąga ID z linku (np. EP0000-CUSA00000_00-...)
+            val = val.split('product/')[1].split('/')[0].split('?')[0];
+            document.getElementById('gameId').value = val;
+        }
+    }
 
-function deleteItem(id, key) {
-if(!confirm("Usunąć?")) return;
-let db = JSON.parse(localStorage.getItem(key));
-if(key === KEY_W) db = db.filter(x => x.id != id); else db.splice(id, 1);
-localStorage.setItem(key, JSON.stringify(db));
-render();
-}
+    /* --- API (Opcjonalne, jeśli kiedyś zadziała bez klucza) --- */
+    async function tryFetchData() {
+        // Na razie placeholder - funkcja Smart Paste wyżej jest ważniejsza
+        alert("Na GitHub Pages używaj pola 'Wklej tutaj cenę' (poniżej) lub wtyczki zakładkowej.");
+    }
 
-function render() {
-const sW = document.getElementById('wSearch').value.toLowerCase();
-const dbW = JSON.parse(localStorage.getItem(KEY_W) || '[]');
-document.getElementById('wBody').innerHTML = dbW.filter(g => g.name.toLowerCase().includes(sW)).map(g => {
-const v = [parseFloat(g.pl)||Infinity, (parseFloat(g.tr)*rates.TRY)||Infinity, (parseFloat(g.in)*rates.INR)||Infinity, (parseFloat(g.ua)*rates.UAH)||Infinity];
-const min = Math.min(...v);
-const cl = (val) => val === min && min !== Infinity ? 'best-deal' : '';
-return `<tr>
-<td class="title-cell"><b>${g.name}</b><br><small style="color:#666">${g.ed}</small></td>
-<td><div class="${cl(v[0])}">${g.pl || '-'}</div></td>
-<td><div class="${cl(v[1])}">${g.tr || '-'}<span class="conv-val">${g.tr?(g.tr*rates.TRY).toFixed(2)+' zł':''}</span></div></td>
-<td><div class="${cl(v[2])}">${g.in || '-'}<span class="conv-val">${g.in?(g.in*rates.INR).toFixed(2)+' zł':''}</span></div></td>
-<td><div class="${cl(v[3])}">${g.ua || '-'}<span class="conv-val">${g.ua?(g.ua*rates.UAH).toFixed(2)+' zł':''}</span></div></td>
-<td><div class="action-group">
-<button class="btn-tab btn-edit" onclick="editGame('${g.id}', 'W')">✏️</button>
-<button class="btn-tab btn-buy" onclick="openModal('${g.id}')">🛒</button>
-<button class="btn-tab btn-del" onclick="deleteItem('${g.id}', KEY_W)">❌</button>
-</div></td></tr>`;
-}).join('');
+    function openPsn(loc) {
+        const id = document.getElementById('gameId').value;
+        if(id) window.open(`https://store.playstation.com/${loc}/product/${id}`, '_blank');
+        else alert("Najpierw wklej ID gry!");
+    }
 
-const sC = document.getElementById('cSearch').value.toLowerCase();
-const dbC = JSON.parse(localStorage.getItem(KEY_C) || '[]');
-document.getElementById('cBody').innerHTML = dbC.filter(g => g.name.toLowerCase().includes(sC)).map((g, i) => {
-let col = g.reg==='PL'?'#6b1414':g.reg==='TR'?'#4a2168':g.reg==='IN'?'#6b4515':'#153a68';
-return `<tr>
-<td class="title-cell"><b>${g.name}</b><br><small style="color:#666">${g.ed}</small></td>
-<td><span class="tag-reg" style="background:${col}">${g.reg}</span></td>
-<td>${g.date}</td>
-<td><div class="action-group">
-<button class="btn-tab btn-edit" onclick="editGame(${i}, 'C')">✏️</button>
-<button class="btn-tab btn-del" onclick="deleteItem(${i}, KEY_C)">❌</button>
-</div></td></tr>`;
-}).join('');
-}
+    async function fetchRates() {
+        try {
+            const res = await fetch('https://open.er-api.com/v6/latest/PLN');
+            const data = await res.json();
+            if(data?.rates) {
+                rates.TRY = 1/data.rates.TRY; 
+                rates.INR = 1/data.rates.INR; 
+                rates.UAH = 1/data.rates.UAH;
+                document.getElementById('ratesDisplay').innerText = 
+                    `Kursy (auto): TRY=${rates.TRY.toFixed(3)} | INR=${rates.INR.toFixed(3)} | UAH=${rates.UAH.toFixed(3)}`;
+            }
+        } catch(e) {
+            console.log("Błąd kursów walut, używam domyślnych.");
+        }
+        render();
+    }
 
-function exportData() {
-const d = { w: localStorage.getItem(KEY_W), c: localStorage.getItem(KEY_C) };
-const a = document.createElement("a"); a.href=URL.createObjectURL(new Blob([JSON.stringify(d)],{type:"application/json"}));
-a.download="psn_backup.json"; a.click();
-}
-function importData(inp) {
-const r = new FileReader(); r.onload = e => { const d = JSON.parse(e.target.result); localStorage.setItem(KEY_W, d.w); localStorage.setItem(KEY_C, d.c); render(); };
-r.readAsText(inp.files[0]);
-}
-window.onload = fetchRates;
+    function saveGame() {
+        const name = document.getElementById('gameName').value;
+        if(!name) return alert("Podaj nazwę gry!");
+        
+        let db = JSON.parse(localStorage.getItem(KEY_W) || '[]');
+        
+        // Zbieramy dane i upewniamy się, że są czyste (dla pewności czyścimy też przy zapisie)
+        const newEntry = {
+            id: document.getElementById('gameId').value || Date.now().toString(),
+            name: name, 
+            ed: document.getElementById('gameEd').value,
+            pl: cleanPrice(document.getElementById('pPL').value, 'PLN'),
+            tr: cleanPrice(document.getElementById('pTR').value, 'TRY'),
+            in: cleanPrice(document.getElementById('pIN').value, 'INR'),
+            ua: cleanPrice(document.getElementById('pUA').value, 'UAH')
+        };
+
+        // Sprawdzenie czy gra już jest (aktualizacja)
+        const idx = db.findIndex(x => x.id == newEntry.id);
+        if (idx > -1) db[idx] = newEntry; 
+        else db.push(newEntry);
+
+        localStorage.setItem(KEY_W, JSON.stringify(db));
+        
+        // Czyścimy pola
+        ['gameId','gameName','pPL','pTR','pIN','pUA'].forEach(f => document.getElementById(f).value = '');
+        render();
+    }
+
+    function render() {
+        const dbW = JSON.parse(localStorage.getItem(KEY_W) || '[]');
+        const tbody = document.getElementById('wBody');
+        if(!tbody) return;
+
+        tbody.innerHTML = dbW.map(g => {
+            // Parsujemy na liczby do obliczeń
+            const plVal = parseFloat(g.pl) || Infinity;
+            const trVal = (parseFloat(g.tr) * rates.TRY) || Infinity;
+            const inVal = (parseFloat(g.in) * rates.INR) || Infinity;
+            const uaVal = (parseFloat(g.ua) * rates.UAH) || Infinity;
+
+            // Znajdź najniższą cenę (ale nie 0 i nie Infinity)
+            const validPrices = [plVal, trVal, inVal, uaVal].filter(p => p > 0 && p !== Infinity);
+            const min = validPrices.length ? Math.min(...validPrices) : 0;
+
+            const cl = (val) => (val > 0 && Math.abs(val - min) < 0.01) ? 'best-deal' : '';
+
+            return `<tr>
+                <td style="text-align:left; padding-left:10px;">
+                    <b>${g.name}</b><br><small style="color:#777">${g.ed}</small>
+                </td>
+                <td><div class="${cl(plVal)}">${g.pl || '-'}</div></td>
+                <td><div class="${cl(trVal)}">${g.tr || '-'}<span class="conv-val">${g.tr ? (g.tr*rates.TRY).toFixed(2)+' zł' : ''}</span></div></td>
+                <td><div class="${cl(inVal)}">${g.in || '-'}<span class="conv-val">${g.in ? (g.in*rates.INR).toFixed(2)+' zł' : ''}</span></div></td>
+                <td><div class="${cl(uaVal)}">${g.ua || '-'}<span class="conv-val">${g.ua ? (g.ua*rates.UAH).toFixed(2)+' zł' : ''}</span></div></td>
+                <td><button class="btn-tab" onclick="deleteItem('${g.id}')">❌</button></td>
+            </tr>`;
+        }).join('');
+    }
+
+    function deleteItem(id) {
+        if(!confirm("Usunąć z listy?")) return;
+        let db = JSON.parse(localStorage.getItem(KEY_W));
+        localStorage.setItem(KEY_W, JSON.stringify(db.filter(x => x.id != id)));
+        render();
+    }
+
+    window.onload = fetchRates;
 </script>
 </body>
 </html>
+
