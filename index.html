@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PSN Manager v11.0 - Collection Filter</title>
+<title>PSN Manager v11.1 - Smart Paste</title>
 <style>
     :root {--ps-blue: #0056a3;--ps-dark: #121212;--ps-card: #1e1e1e;--ps-text: #d0d0d0;--best-price: #ffd700;--border: #333;--btn-pl: #6b1414;--btn-tr: #4a2168;--btn-in: #6b4515;--btn-ua: #153a68;--btn-api: #6a1b9a;}
     body { font-family: 'Segoe UI', sans-serif; background: var(--ps-dark); color: var(--ps-text); margin: 0; padding: 20px; }
@@ -46,7 +46,6 @@
     .best-deal { color: var(--best-price); font-weight: bold; border: 1px solid rgba(255, 215, 0, 0.2); padding: 2px 6px; border-radius: 4px; display: inline-block; }
     .conv-val { display: block; font-size: 9px; color: #666; margin-top: 2px; }
     .tag-reg { font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: bold; color: white; }
-    /* FILTER STYLES */
     .filter-cnt { display: flex; gap: 8px; margin-bottom: 10px; padding: 0 5px; }
     .filt-btn { background: #2a2a2a; border: 1px solid #444; color: #888; padding: 5px 12px; border-radius: 15px; cursor: pointer; font-size: 11px; transition: 0.2s; font-weight: bold; }
     .filt-btn:hover { background: #333; color: white; }
@@ -56,7 +55,6 @@
     .filt-btn.active[data-r="TR"] { background: var(--btn-tr); }
     .filt-btn.active[data-r="IN"] { background: var(--btn-in); }
     .filt-btn.active[data-r="UA"] { background: var(--btn-ua); }
-
     .links-section { margin-top: 40px; padding-top: 20px; border-top: 1px solid #333; text-align: center; }
     .links-title { font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; }
     .links-grid { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
@@ -65,74 +63,27 @@
 </style>
 </head>
 <body>
-
-<div id="regionModal">
-    <div class="modal-content">
-        <h3 style="margin-top:0; color:#ccc">Gdzie kupiono?</h3>
-        <select id="modalRegionSelect"></select>
-        <button class="modal-btn" onclick="confirmMove()">POTWIERDŹ</button>
-        <button class="modal-btn" style="background:#444;" onclick="closeModal()">ANULUJ</button>
-    </div>
-</div>
-
+<div id="regionModal"><div class="modal-content"><h3 style="margin-top:0; color:#ccc">Gdzie kupiono?</h3><select id="modalRegionSelect"></select><button class="modal-btn" onclick="confirmMove()">POTWIERDŹ</button><button class="modal-btn" style="background:#444;" onclick="closeModal()">ANULUJ</button></div></div>
 <div class="container">
-    <div class="top-bar">
-        <div id="ratesDisplay" class="rates-info">Kursy walut: Pobieranie...</div>
-        <div>
-            <button class="btn-backup" onclick="exportData()">📤 EKSPORT</button>
-            <button class="btn-backup" onclick="document.getElementById('importFile').click()">📥 IMPORT</button>
-            <input type="file" id="importFile" style="display:none" onchange="importData(this)">
-        </div>
-    </div>
-
+    <div class="top-bar"><div id="ratesDisplay" class="rates-info">Kursy walut: Pobieranie...</div><div><button class="btn-backup" onclick="exportData()">📤 EKSPORT</button><button class="btn-backup" onclick="document.getElementById('importFile').click()">📥 IMPORT</button><input type="file" id="importFile" style="display:none" onchange="importData(this)"></div></div>
     <div class="main-box">
-        <div class="search-row">
-            <input type="text" id="searchInp" placeholder="Wpisz nazwę gry..." oninput="syncSearch()">
-            <a id="psLink" href="#" target="_blank" class="btn-search-compact">🔍 ZNAJDŹ ID</a>
-        </div>
-
-        <div class="flex-row">
-            <input type="text" id="gameId" placeholder="Product ID (lub link)" style="flex: 2;">
-            <button class="btn-api" onclick="alert('API soon...')">⚡ API</button>
-        </div>
-        <div class="flex-row">
-            <input type="text" id="gameName" placeholder="Nazwa gry" style="flex: 2;">
-            <select id="gameEd" style="max-width: 150px;">
-                <option>Standard</option><option>Deluxe</option><option>Gold</option><option>Ultimate</option><option>GOTY</option>
-            </select>
-        </div>
-
-        <div class="region-grid">
-            <button class="reg-btn bg-pl" onclick="openPsn('pl-pl')">PL 🇵🇱</button>
-            <button class="reg-btn bg-tr" onclick="openPsn('en-tr')">TR 🇹🇷</button>
-            <button class="reg-btn bg-in" onclick="openPsn('en-in')">IN 🇮🇳</button>
-            <button class="reg-btn bg-ua" onclick="openPsn('uk-ua')">UA 🇺🇦</button>
-        </div>
-
+        <div class="search-row"><input type="text" id="searchInp" placeholder="Wpisz nazwę gry..." oninput="syncSearch()"><a id="psLink" href="#" target="_blank" class="btn-search-compact">🔍 ZNAJDŹ ID</a></div>
+        <div class="flex-row"><input type="text" id="gameId" placeholder="Product ID (lub link)" style="flex: 2;"><button class="btn-api" onclick="alert('API soon...')">⚡ API</button></div>
+        <div class="flex-row"><input type="text" id="gameName" placeholder="Nazwa gry" style="flex: 2;"><select id="gameEd" style="max-width: 150px;"><option>Standard</option><option>Deluxe</option><option>Gold</option><option>Ultimate</option><option>GOTY</option></select></div>
+        <div class="region-grid"><button class="reg-btn bg-pl" onclick="openPsn('pl-pl')">PL 🇵🇱</button><button class="reg-btn bg-tr" onclick="openPsn('en-tr')">TR 🇹🇷</button><button class="reg-btn bg-in" onclick="openPsn('en-in')">IN 🇮🇳</button><button class="reg-btn bg-ua" onclick="openPsn('uk-ua')">UA 🇺🇦</button></div>
         <div class="price-grid">
-            <input type="number" id="pPL" placeholder="PLN">
-            <input type="number" id="pTR" placeholder="TRY">
-            <input type="number" id="pIN" placeholder="INR">
-            <input type="number" id="pUA" placeholder="UAH">
+            <input type="number" id="pPL" placeholder="PLN" step="any">
+            <input type="number" id="pTR" placeholder="TRY" step="any">
+            <input type="number" id="pIN" placeholder="INR" step="any">
+            <input type="number" id="pUA" placeholder="UAH" step="any">
         </div>
-
         <button class="btn-save" onclick="saveGame()">ZAPISZ GRĘ</button>
     </div>
-
-    <div class="section-header" style="border-color: var(--ps-blue);">
-        <span style="color:var(--ps-blue); font-weight:bold;">WATCHLISTA</span>
-        <input type="text" class="search-bar" id="wSearch" placeholder="Szukaj..." oninput="render()">
-    </div>
-    <table>
-        <thead><tr><th>Gra / Edycja</th><th>PLN</th><th>TRY</th><th>INR</th><th>UAH</th><th>Akcje</th></tr></thead>
-        <tbody id="wBody"></tbody>
-    </table>
-
-    <div class="section-header" style="border-color: #2e7d32;">
-        <span style="color:#2e7d32; font-weight:bold;">KOLEKCJA</span>
-        <input type="text" class="search-bar" id="cSearch" placeholder="Szukaj..." oninput="render()">
-    </div>
     
+    <div class="section-header" style="border-color: var(--ps-blue);"><span style="color:var(--ps-blue); font-weight:bold;">WATCHLISTA</span><input type="text" class="search-bar" id="wSearch" placeholder="Szukaj..." oninput="render()"></div>
+    <table><thead><tr><th>Gra / Edycja</th><th>PLN</th><th>TRY</th><th>INR</th><th>UAH</th><th>Akcje</th></tr></thead><tbody id="wBody"></tbody></table>
+    
+    <div class="section-header" style="border-color: #2e7d32;"><span style="color:#2e7d32; font-weight:bold;">KOLEKCJA</span><input type="text" class="search-bar" id="cSearch" placeholder="Szukaj..." oninput="render()"></div>
     <div class="filter-cnt">
         <button class="filt-btn active" data-r="ALL" onclick="setFilter('ALL')">WSZYSTKIE</button>
         <button class="filt-btn" data-r="PL" onclick="setFilter('PL')">PL 🇵🇱</button>
@@ -140,19 +91,9 @@
         <button class="filt-btn" data-r="IN" onclick="setFilter('IN')">IN 🇮🇳</button>
         <button class="filt-btn" data-r="UA" onclick="setFilter('UA')">UA 🇺🇦</button>
     </div>
-    <table>
-        <thead><tr><th>Tytuł</th><th>Region</th><th>Data</th><th>Opcje</th></tr></thead>
-        <tbody id="cBody"></tbody>
-    </table>
+    <table><thead><tr><th>Tytuł</th><th>Region</th><th>Data</th><th>Opcje</th></tr></thead><tbody id="cBody"></tbody></table>
 
-    <div class="links-section">
-        <div class="links-title">🔗 SZYBKIE DOŁADOWANIA PORTFELA</div>
-        <div class="links-grid">
-            <a href="https://gg.deals/gift-cards-group/playstation-network-card-try-turkey/" target="_blank" class="link-btn">🇹🇷 Turcja</a>
-            <a href="https://gg.deals/gift-cards-group/playstation-network-card-inr-india/" target="_blank" class="link-btn">🇮🇳 Indie</a>
-            <a href="https://www.amazon.in/Playstation-Gift-Redeemable-Flat-Cashback/dp/B0C1H473H8?th=1&gpo=1000" target="_blank" class="link-btn">🛒 Amazon India</a>
-        </div>
-    </div>
+    <div class="links-section"><div class="links-title">🔗 SZYBKIE DOŁADOWANIA PORTFELA</div><div class="links-grid"><a href="https://gg.deals/gift-cards-group/playstation-network-card-try-turkey/" target="_blank" class="link-btn">🇹🇷 Turcja</a><a href="https://gg.deals/gift-cards-group/playstation-network-card-inr-india/" target="_blank" class="link-btn">🇮🇳 Indie</a><a href="https://www.amazon.in/Playstation-Gift-Redeemable-Flat-Cashback/dp/B0C1H473H8?th=1&gpo=1000" target="_blank" class="link-btn">🛒 Amazon India</a></div></div>
 </div>
 
 <script>
@@ -160,7 +101,7 @@
     const KEY_C = "PSN_COLLECTION";
     let rates = { TRY: 0.12, INR: 0.048, UAH: 0.10 };
     let tempId = null;
-    let filterReg = 'ALL'; // Zmienna do przechowywania aktualnego filtra
+    let filterReg = 'ALL';
 
     async function fetchRates() {
         try {
@@ -174,6 +115,38 @@
             }
         } catch (e) {}
         render();
+    }
+
+    // --- NOWA FUNKCJA OBSŁUGUJĄCA WKLEJANIE CEN ---
+    function setupPasteHandlers() {
+        ['pPL', 'pTR', 'pIN', 'pUA'].forEach(id => {
+            const el = document.getElementById(id);
+            if(!el) return;
+            el.addEventListener('paste', function(e) {
+                e.preventDefault(); // Zatrzymaj standardowe wklejanie
+                let txt = (e.clipboardData || window.clipboardData).getData('text');
+                
+                // 1. INDIE (IN): Format 2,999.00 (przecinek to tysiące, kropka to grosze)
+                // lub format "Rs 2,999"
+                if(id === 'pIN') {
+                    // Usuwamy waluty i spacje, usuwamy przecinki (tysiące), zostawiamy kropkę i cyfry
+                    txt = txt.replace(/,/g, '').replace(/[^0-9.]/g, '');
+                } 
+                // 2. TURCJA (TR), POLSKA (PL), UKRAINA (UA): 
+                // Format TR: 2.099,00 (kropka to tysiące, przecinek to grosze)
+                // Format PL/UA: często spacja jako tysiące i przecinek jako grosze
+                else {
+                    // Usuwamy kropki (bo w TR to separator tysięcy)
+                    txt = txt.replace(/\./g, '');
+                    // Zamieniamy przecinek na kropkę (zrozumiałą dla input type="number")
+                    txt = txt.replace(/,/g, '.');
+                    // Usuwamy wszystko co nie jest cyfrą ani nową kropką (np. spacje, "zł", "TL")
+                    txt = txt.replace(/[^0-9.]/g, '');
+                }
+                
+                this.value = txt; // Wstawiamy naprawioną wartość
+            });
+        });
     }
 
     function syncSearch() {
@@ -271,7 +244,6 @@
         render();
     }
 
-    // Nowa funkcja do obsługi filtrów
     function setFilter(reg) {
         filterReg = reg;
         document.querySelectorAll('.filt-btn').forEach(btn => {
@@ -304,8 +276,6 @@
 
         const sC = document.getElementById('cSearch').value.toLowerCase();
         const dbC = JSON.parse(localStorage.getItem(KEY_C) || '[]');
-        
-        // ZAKTUALIZOWANA LOGIKA FILTROWANIA
         const filteredCollection = dbC.filter(g => {
             const matchesSearch = g.name.toLowerCase().includes(sC);
             const matchesReg = filterReg === 'ALL' || g.reg === filterReg;
@@ -345,7 +315,10 @@
         r.readAsText(inp.files[0]);
     }
     
-    window.onload = fetchRates;
+    window.onload = function() {
+        fetchRates();
+        setupPasteHandlers(); // Uruchomienie obsługi wklejania
+    };
 </script>
 </body>
 </html>
