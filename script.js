@@ -261,3 +261,57 @@ window.onload = function() {
     fetchRates();
     setupPasteHandlers(); 
 };
+
+async function fetchPricesAuto() {
+    // Pobieramy ID z Twojego głównego pola tekstowego
+    const productId = document.getElementById('gameIdInput').value.trim();
+    
+    if(!productId) {
+        return alert("Najpierw wklej Product ID gry! (np. EP9000-CUSA...)");
+    }
+
+    // Zakładam, że Twoje pola z cenami mają ID: pPL, pTR, pIN, pJP (jeśli masz inne, popraw je tutaj)
+    const regions = [
+        { code: 'PL', locale: 'pl-PL', input: 'pPL' },
+        { code: 'TR', locale: 'en-TR', input: 'pTR' },
+        { code: 'IN', locale: 'en-IN', input: 'pIN' },
+        { code: 'JP', locale: 'ja-JP', input: 'pJP' }
+    ];
+
+    // Animacja ładowania w polach
+    regions.forEach(r => {
+        const inputField = document.getElementById(r.input);
+        if(inputField) inputField.value = "⏳...";
+    });
+
+    // Lecimy z pobieraniem dla każdego regionu
+    for (const reg of regions) {
+        try {
+            // Strzał do Twojego Vercela, tym razem z parametrem 'id'
+            const res = await fetch(`/api/psn?id=${productId}&locale=${reg.locale}`);
+            if (!res.ok) throw new Error("Błąd API");
+            
+            const data = await res.json();
+            const p = data?.data?.productRetrieve?.products?.[0]?.price;
+            
+            const inputField = document.getElementById(r.input);
+            if(!inputField) continue;
+
+            if (p && (p.basePriceValue || p.discountedValue)) {
+                let val = p.discountedValue || p.basePriceValue;
+                
+                if(reg.code === 'JP') {
+                    inputField.value = val;
+                } else {
+                    inputField.value = (val / 100).toFixed(2);
+                }
+            } else {
+                inputField.value = "Brak";
+            }
+        } catch (err) {
+            console.error(`Błąd dla ${reg.code}:`, err);
+            const inputField = document.getElementById(r.input);
+            if(inputField) inputField.value = "Błąd";
+        }
+    }
+}
