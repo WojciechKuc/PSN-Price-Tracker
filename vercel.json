@@ -1,5 +1,11 @@
 {
-  "rewrites": [
-    { "source": "/api/psn", "destination": "/api/psn.js" }
+  "version": 2,
+  "builds": [
+    { "src": "api/psn.js", "use": "@vercel/node" },
+    { "src": "index.html", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/psn", "dest": "/api/psn.js" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
