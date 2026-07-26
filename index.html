@@ -356,19 +356,18 @@ async function fetchPricesAuto() {
         for (const reg of regions) {
             try {
                 const targetUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/container/${reg.locale}/1/${productId}`;
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+                // Używamy corsproxy.io – działa znacznie szybciej i stabilniej
+                const proxyUrl = `https://corsproxy.io/?` + encodeURIComponent(targetUrl);
                 
-                // Timeout 8 sekund - jeśli proxy zamuli, przerywamy to żądanie zamiast wieszać aplikację
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000);
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
 
                 const res = await fetch(proxyUrl, { signal: controller.signal });
                 clearTimeout(timeoutId);
 
-                if (!res.ok) throw new Error(`Błąd sieci: ${res.status}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 
-                const textData = await res.text();
-                const data = JSON.parse(textData);
+                const data = await res.json();
                 
                 const p = data?.data?.productRetrieve?.products?.[0]?.price;
                 const inputField = document.getElementById(reg.input);
@@ -383,11 +382,10 @@ async function fetchPricesAuto() {
                     }
                 }
             } catch (err) {
-                console.error(`Błąd ${reg.code}:`, err);
+                console.warn(`Pominięto region ${reg.code}:`, err.message);
             }
         }
     } finally {
-        // Blok finally gwarantuje, że przycisk zawsze odblokuje się i wróci do stanu początkowego
         btn.innerText = oldText;
         btn.disabled = false;
     }
