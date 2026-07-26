@@ -68,7 +68,7 @@
     <div class="top-bar"><div id="ratesDisplay" class="rates-info">Kursy walut: Pobieranie...</div><div><button class="btn-backup" onclick="exportData()">📤 EKSPORT</button><button class="btn-backup" onclick="document.getElementById('importFile').click()">📥 IMPORT</button><input type="file" id="importFile" style="display:none" onchange="importData(this)"></div></div>
     <div class="main-box">
         <div class="search-row"><input type="text" id="searchInp" placeholder="Wpisz nazwę gry..." oninput="syncSearch()"><a id="psLink" href="#" target="_blank" class="btn-search-compact">🔍 ZNAJDŹ ID</a></div>
-        <div class="flex-row"><input type="text" id="gameId" placeholder="Product ID (lub link)" style="flex: 2;"><button class="btn-api" onclick="fetchPricesAuto()">⚡ API</button></div>
+        <div class="flex-row"><input type="text" id="gameId" placeholder="Product ID (lub link)" style="flex: 2;"><button class="btn-api" onclick="fetchPricesAuto()">POBIERZ CENY</button></div>
         <div class="flex-row"><input type="text" id="gameName" placeholder="Nazwa gry" style="flex: 1;"></div>
         <div class="region-grid"><button class="reg-btn bg-pl" onclick="openPsn('pl-pl')">PL 🇵🇱</button><button class="reg-btn bg-tr" onclick="openPsn('en-tr')">TR 🇹🇷</button><button class="reg-btn bg-in" onclick="openPsn('en-in')">IN 🇮🇳</button><button class="reg-btn bg-jp" onclick="openPsn('ja-jp')">JP 🇯🇵</button></div>
         <div class="price-grid">
