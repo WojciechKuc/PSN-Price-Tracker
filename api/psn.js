@@ -54,6 +54,15 @@ export default async function handler(req, res) {
         const product = cache[`Product:${id}`];
         const name = product?.name || product?.invariantName || id;
 
+        // Typy CTA obslugiwane (zwykly zakup + preordery)
+        const CTA_TYPES = ['ADD_TO_CART', 'PREORDER', 'PRE_PURCHASE', 'COMING_SOON'];
+
+        const isSupportedCta = (key) =>
+            key && CTA_TYPES.some(type => key.startsWith(`GameCTA:${type}`));
+
+        const isPreorderCta = (key) =>
+            key && ['PREORDER', 'PRE_PURCHASE', 'COMING_SOON'].some(type => key.startsWith(`GameCTA:${type}`));
+
         // 1. Cena bezposrednio na produkcie (VC, passy, dodatki)
         if (product?.price?.basePrice) {
             const p = product.price;
@@ -62,15 +71,16 @@ export default async function handler(req, res) {
                 basePrice: p.basePrice,
                 discountedPrice: p.discountedPrice,
                 isFree: p.isFree,
+                isPreorder: false,
                 serviceBranding: p.serviceBranding
             });
         }
 
-        // 2. Cena z GameCTA ADD_TO_CART powiazanego przez webctas
+        // 2. Cena z GameCTA powiazanego przez webctas (ADD_TO_CART + PREORDER + PRE_PURCHASE + COMING_SOON)
         if (product?.webctas) {
             for (const ctaRef of product.webctas) {
                 const ctaKey = ctaRef?.__ref;
-                if (!ctaKey || !ctaKey.startsWith('GameCTA:ADD_TO_CART')) continue;
+                if (!isSupportedCta(ctaKey)) continue;
                 const cta = cache[ctaKey];
                 if (cta?.price?.basePrice) {
                     const p = cta.price;
@@ -79,15 +89,16 @@ export default async function handler(req, res) {
                         basePrice: p.basePrice,
                         discountedPrice: p.discountedPrice,
                         isFree: p.isFree,
+                        isPreorder: isPreorderCta(ctaKey),
                         serviceBranding: p.serviceBranding
                     });
                 }
             }
         }
 
-        // 3. Fallback: szukaj GameCTA:ADD_TO_CART:{id} w cache
+        // 3. Fallback: szukaj dowolnego wspieranego GameCTA w cache
         const ctaFallbackKey = Object.keys(cache).find(
-            k => k.startsWith('GameCTA:ADD_TO_CART:ADD_TO_CART') && k.includes(id) && cache[k]?.price?.basePrice
+            k => isSupportedCta(k) && k.includes(id) && cache[k]?.price?.basePrice
         );
         if (ctaFallbackKey) {
             const p = cache[ctaFallbackKey].price;
@@ -96,6 +107,7 @@ export default async function handler(req, res) {
                 basePrice: p.basePrice,
                 discountedPrice: p.discountedPrice,
                 isFree: p.isFree,
+                isPreorder: isPreorderCta(ctaFallbackKey),
                 serviceBranding: p.serviceBranding
             });
         }
