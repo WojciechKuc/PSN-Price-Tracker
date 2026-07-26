@@ -2,25 +2,29 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
 
-    let id = req.query?.id;
-    let locale = req.query?.locale;
+    let id, locale;
 
-    // Awaryjne parsowanie URL gdyby req.query było puste przez rozszerzenia przeglądarki
+    // 1. Próba pobrania przez standardowy Node.js / Express (req.query)
+    if (req.query) {
+        id = req.query.id;
+        locale = req.query.locale;
+    }
+
+    // 2. Awaryjne parsowanie z adresu URL (dla Edge / Web Request / Vercel Runtime)
     if (!id || !locale) {
         try {
-            const fullUrl = new URL(req.url, `https://${req.headers.host || 'localhost'}`);
+            const host = (req.headers && typeof req.headers.get === 'function') 
+                ? req.headers.get('host') 
+                : (req.headers?.host || 'localhost');
+                
+            const fullUrl = new URL(req.url, `https://${host}`);
             id = id || fullUrl.searchParams.get('id');
             locale = locale || fullUrl.searchParams.get('locale');
         } catch (e) {}
     }
 
-    // Jeśli nadal brak, zwracamy szczegółowy podgląd błędu do konsoli
     if (!id || !locale) {
-        return res.status(400).json({ 
-            error: 'Brak wymaganych parametrów', 
-            received_url: req.url, 
-            received_query: req.query 
-        });
+        return res.status(400).json({ error: 'Brak wymaganych parametrów id lub locale' });
     }
 
     try {
@@ -28,7 +32,7 @@ export default async function handler(req, res) {
         
         const response = await fetch(psnUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept-Language': locale
             }
         });
