@@ -11,7 +11,6 @@ export default async function handler(req, res) {
 
     const [lang, country] = locale.split('-');
     const localeFormatted = `${lang.toLowerCase()}-${country.toUpperCase()}`;
-    const localeLower = `${lang.toLowerCase()}-${country.toLowerCase()}`;
 
     try {
         const storeUrl = `https://store.playstation.com/${localeFormatted}/product/${id}`;
@@ -45,7 +44,7 @@ export default async function handler(req, res) {
         }
 
         // Wyciagnij JSON z tagu <script> wewnatrz stringa HTML
-        const innerMatch = bataranksText.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/);
+        const innerMatch = batarangsText.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/);
         if (!innerMatch) {
             return res.status(404).json({ error: 'Brak inner script w batarangs' });
         }
@@ -57,16 +56,9 @@ export default async function handler(req, res) {
             return res.status(404).json({ error: 'Brak cache w apolloData', keys: Object.keys(apolloData || {}) });
         }
 
-        // Znajdz klucz Product:${id} w Apollo cache
-        const productKey = Object.keys(cache).find(k => k.startsWith('Product:') && k.includes(id));
-        if (!productKey) {
-            return res.status(404).json({ error: 'Brak Product w cache', cacheKeys: Object.keys(cache).slice(0, 20) });
-        }
-
-        // Znajdz klucz Sku z cena (ma pole price)
+        // Znajdz klucz Sku z cena w Apollo cache
         const skuKey = Object.keys(cache).find(k => k.startsWith('Sku:') && k.includes(id) && cache[k]?.price);
-        
-        // Alternatywnie szukaj w calosci cache
+
         let priceObj = null;
         if (skuKey) {
             priceObj = cache[skuKey].price;
@@ -88,9 +80,6 @@ export default async function handler(req, res) {
             });
         }
 
-        // Normalizuj do formatu oczekiwanego przez index.html
-        // index.html robi: val = p.discountedValue || p.basePriceValue
-        // potem dla nie-JP: (val / 100).toFixed(2)
         let basePriceValue = priceObj.basePriceValue ?? priceObj.basePrice ?? null;
         let discountedValue = priceObj.discountedValue ?? priceObj.discountedPrice ?? null;
 
