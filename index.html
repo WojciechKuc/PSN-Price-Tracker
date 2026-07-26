@@ -71,7 +71,7 @@
     <div class="top-bar"><div id="ratesDisplay" class="rates-info">Kursy walut: Pobieranie...</div><div><button class="btn-backup" onclick="exportData()">📤 EKSPORT</button><button class="btn-backup" onclick="document.getElementById('importFile').click()">📥 IMPORT</button><input type="file" id="importFile" style="display:none" onchange="importData(this)"></div></div>
     <div class="main-box">
         <div class="search-row"><input type="text" id="searchInp" placeholder="Wpisz nazwę gry..." oninput="syncSearch()"><a id="psLink" href="#" target="_blank" class="btn-search-compact">🔍 ZNAJDŹ ID</a></div>
-        <div class="flex-row"><input type="text" id="gameId" placeholder="Product ID (lub link)" style="flex: 2;"><button class="btn-api" onclick="alert('API soon...')">⚡ API</button></div>
+        <div class="flex-row"><input type="text" id="gameId" placeholder="Product ID (lub link)" style="flex: 2;"><button class="btn-api" onclick="fetchPricesAuto()">⚡ API</button></div>
         <div class="flex-row"><input type="text" id="gameName" placeholder="Nazwa gry" style="flex: 2;"><select id="gameEd" style="max-width: 150px;"><option>Standard</option><option>Deluxe</option><option>Gold</option><option>Ultimate</option><option>GOTY</option></select></div>
         <div class="region-grid"><button class="reg-btn bg-pl" onclick="openPsn('pl-pl')">PL 🇵🇱</button><button class="reg-btn bg-tr" onclick="openPsn('en-tr')">TR 🇹🇷</button><button class="reg-btn bg-in" onclick="openPsn('en-in')">IN 🇮🇳</button><button class="reg-btn bg-jp" onclick="openPsn('ja-jp')">JP 🇯🇵</button></div>
         <div class="price-grid">
@@ -325,6 +325,67 @@
         fetchRates();
         setupPasteHandlers(); 
     };
+
+    async function fetchPricesAuto() {
+        let rawId = document.getElementById('gameId').value.trim();
+        
+        if (!rawId) {
+            return alert("Najpierw wklej Product ID (np. EP9000...) w polu obok przycisku API!");
+        }
+
+        // Jeśli ktoś wklei cały link zamiast ID, ten kod wyłuska sam numer
+        let productId = rawId;
+        if (rawId.includes('product/')) {
+            productId = rawId.split('product/')[1].split('/')[0].split('?')[0];
+        }
+
+        const btn = document.querySelector('.btn-api');
+        const oldText = btn.innerText;
+        btn.innerText = "⏳...";
+
+        const regions = [
+            { code: 'PL', locale: 'pl-PL', input: 'pPL' },
+            { code: 'TR', locale: 'en-TR', input: 'pTR' },
+            { code: 'IN', locale: 'en-IN', input: 'pIN' },
+            { code: 'JP', locale: 'ja-JP', input: 'pJP' }
+        ];
+
+        // Wyświetlanie klepsydry w polach
+        regions.forEach(r => document.getElementById(r.input).value = "⏳...");
+
+        for (const reg of regions) {
+            try {
+                // PAMIĘTAJ: Jeśli otwierasz to z dysku komputera, zamiast '/api/psn' 
+                // musisz wpisać pełny adres swojego Vercela np. 'https://TWOJ-VERCEL.vercel.app/api/psn'
+                const res = await fetch(`/api/psn?id=${productId}&locale=${reg.locale}`);
+                
+                if (!res.ok) throw new Error("Błąd API");
+                const data = await res.json();
+                
+                const p = data?.data?.productRetrieve?.products?.[0]?.price;
+                const inputField = document.getElementById(reg.input);
+                
+                if (p && (p.basePriceValue || p.discountedValue)) {
+                    let val = p.discountedValue || p.basePriceValue;
+                    
+                    // JPY nie ma groszy, reszta ma
+                    if(reg.code === 'JP') {
+                        inputField.value = val;
+                    } else {
+                        inputField.value = (val / 100).toFixed(2);
+                    }
+                } else {
+                    inputField.value = ""; // Brak ceny dla tego regionu
+                }
+            } catch (err) {
+                console.error(`Błąd ${reg.code}:`, err);
+                document.getElementById(reg.input).value = ""; // Czyści przy błędzie
+            }
+        }
+        
+        // Przywrócenie nazwy przycisku
+        btn.innerText = oldText;
+    }
 </script>
 </body>
 </html>
