@@ -223,6 +223,40 @@ function importData(inp) {
     r.readAsText(inp.files[0]);
 }
 
+// Przykład ID: 10002131 (To jest Concept ID np. dla God of War Ragnarok)
+async function fetchPrice(conceptId) {
+    try {
+        // Zwróć uwagę na względną ścieżkę - apka odpytuje swój własny serwer Vercel
+        const response = await fetch(`/api/psn?conceptId=${conceptId}`);
+        
+        if (!response.ok) {
+             throw new Error('Błąd przy pobieraniu z własnego proxy');
+        }
+
+        const data = await response.json();
+        console.log("Surowe dane z proxy Vercel:", data);
+
+        // Nawigacja po skomplikowanym obiekcie JSON z API Sony
+        // Uwaga: ścieżka do ceny może się różnić w zależności od produktu!
+        const productInfo = data?.data?.productRetrieve?.products?.[0];
+        const priceObj = productInfo?.price?.displayPrice;
+
+        if (priceObj) {
+            console.log("Pobrana cena:", priceObj);
+            // Tutaj wrzucasz logikę przypisania ceny do swojego HTMLa
+            // np. document.getElementById('price-display').innerText = priceObj;
+        } else {
+             console.log("Nie znaleziono ceny dla tego ID.");
+        }
+
+    } catch (err) {
+        console.error("Coś poszło nie tak:", err);
+    }
+}
+
+// Przykład użycia (możesz to podpiąć pod onClick Twojego przycisku):
+// fetchPrice('10002131');
+
 window.onload = function() {
     fetchRates();
     setupPasteHandlers(); 
