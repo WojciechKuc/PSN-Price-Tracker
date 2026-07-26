@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "api/psn.js": {
-      "runtime": "edge"
-    }
-  },
   "rewrites": [
     { "source": "/api/psn", "destination": "/api/psn.js" }
   ]
