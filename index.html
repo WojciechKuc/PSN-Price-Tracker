@@ -352,37 +352,45 @@ async function fetchPricesAuto() {
 
     regions.forEach(r => document.getElementById(r.input).value = "");
 
-    for (const reg of regions) {
-        try {
-            const targetUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/container/${reg.locale}/1/${productId}`;
-            // Używamy darmowego proxy CORS, żeby przeglądarka nie blokowała żądania do PSN w jednym pliku HTML
-            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-            
-            const res = await fetch(proxyUrl);
-            if (!res.ok) throw new Error("Błąd sieci");
-            
-            const textData = await res.text();
-            const data = JSON.parse(textData);
-            
-            const p = data?.data?.productRetrieve?.products?.[0]?.price;
-            const inputField = document.getElementById(reg.input);
-            
-            if (p && (p.basePriceValue || p.discountedValue)) {
-                let val = p.discountedValue || p.basePriceValue;
+    try {
+        for (const reg of regions) {
+            try {
+                const targetUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/container/${reg.locale}/1/${productId}`;
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
                 
-                if (reg.code === 'JP') {
-                    inputField.value = val;
-                } else {
-                    inputField.value = (val / 100).toFixed(2);
+                // Timeout 8 sekund - jeśli proxy zamuli, przerywamy to żądanie zamiast wieszać aplikację
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+                const res = await fetch(proxyUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
+
+                if (!res.ok) throw new Error(`Błąd sieci: ${res.status}`);
+                
+                const textData = await res.text();
+                const data = JSON.parse(textData);
+                
+                const p = data?.data?.productRetrieve?.products?.[0]?.price;
+                const inputField = document.getElementById(reg.input);
+                
+                if (p && (p.basePriceValue || p.discountedValue)) {
+                    let val = p.discountedValue || p.basePriceValue;
+                    
+                    if (reg.code === 'JP') {
+                        inputField.value = val;
+                    } else {
+                        inputField.value = (val / 100).toFixed(2);
+                    }
                 }
+            } catch (err) {
+                console.error(`Błąd ${reg.code}:`, err);
             }
-        } catch (err) {
-            console.error(`Błąd ${reg.code}:`, err);
         }
+    } finally {
+        // Blok finally gwarantuje, że przycisk zawsze odblokuje się i wróci do stanu początkowego
+        btn.innerText = oldText;
+        btn.disabled = false;
     }
-    
-    btn.innerText = oldText;
-    btn.disabled = false;
 }
 </script>
 </body>
