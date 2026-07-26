@@ -2,22 +2,25 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
 
-    // Bezpieczne wyciąganie parametrów (obsługa różnych wersji Vercela)
     let id = req.query?.id;
     let locale = req.query?.locale;
 
+    // Awaryjne parsowanie URL gdyby req.query było puste przez rozszerzenia przeglądarki
     if (!id || !locale) {
         try {
-            const protocol = req.headers['x-forwarded-proto'] || 'https';
-            const host = req.headers['host'] || 'localhost';
-            const fullUrl = new URL(req.url, `${protocol}://${host}`);
+            const fullUrl = new URL(req.url, `https://${req.headers.host || 'localhost'}`);
             id = id || fullUrl.searchParams.get('id');
             locale = locale || fullUrl.searchParams.get('locale');
         } catch (e) {}
     }
 
+    // Jeśli nadal brak, zwracamy szczegółowy podgląd błędu do konsoli
     if (!id || !locale) {
-        return res.status(400).json({ error: 'Brak wymaganych parametrów id lub locale' });
+        return res.status(400).json({ 
+            error: 'Brak wymaganych parametrów', 
+            received_url: req.url, 
+            received_query: req.query 
+        });
     }
 
     try {
@@ -25,7 +28,7 @@ export default async function handler(req, res) {
         
         const response = await fetch(psnUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 'Accept-Language': locale
             }
         });
