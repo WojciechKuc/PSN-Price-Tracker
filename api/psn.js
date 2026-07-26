@@ -34,23 +34,75 @@ export default async function handler(req, res) {
 
         const nextData = JSON.parse(match[1]);
         const pageProps = nextData?.props?.pageProps;
-        const batarangsText = pageProps?.batarangs?.['accessibility-features']?.text;
-        if (!batarangsText) return res.status(404).json({ error: 'Brak batarangsText' });
+        const batarangs = pageProps?.batarangs;
 
-        const innerMatch = batarangsText.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/);
-        if (!innerMatch) return res.status(404).json({ error: 'Brak inner script' });
+        if (!batarangs) return res.status(404).json({ error: 'Brak batarangs' });
 
-        const apolloData = JSON.parse(innerMatch[1]);
-        const cache = apolloData?.cache;
-        if (!cache) return res.status(404).json({ error: 'Brak cache' });
+        // Szukaj ceny we WSZYSTKICH batarangs
+        let priceObj = null;
 
-        // Zwroc pelna zawartosc wszystkich kluczy cache do debugowania
+        for (const batarangKey of Object.keys(batarangs)) {
+            const text = batarangs[batarangKey]?.text;
+            if (!text) continue;
+
+            const innerMatch = text.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/);
+            if (!innerMatch) continue;
+
+            let apolloData;
+            try { apolloData = JSON.parse(innerMatch[1]); } catch(e) { continue; }
+
+            const cache = apolloData?.cache;
+            if (!cache) continue;
+
+            // Szukaj w cache obiektu z ceną
+            for (const key of Object.keys(cache)) {
+                const obj = cache[key];
+                // Cena moze byc bezposrednio w Sku lub w zagniezdonym price
+                const candidate = obj?.price || obj;
+                if (candidate?.currencyCode && (candidate?.basePriceValue != null || candidate?.basePrice != null)) {
+                    priceObj = candidate;
+                    break;
+                }
+            }
+
+            if (priceObj) break;
+        }
+
+        if (!priceObj) {
+            // Zwroc liste wszystkich batarangs i kluczy cache do diagnostyki
+            const debugInfo = {};
+            for (const batarangKey of Object.keys(batarangs)) {
+                const text = batarangs[batarangKey]?.text;
+                if (!text) { debugInfo[batarangKey] = 'no text'; continue; }
+                const innerMatch = text.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/);
+                if (!innerMatch) { debugInfo[batarangKey] = 'no inner script'; continue; }
+                try {
+                    const d = JSON.parse(innerMatch[1]);
+                    debugInfo[batarangKey] = Object.keys(d?.cache || d || {}).slice(0, 10);
+                } catch(e) { debugInfo[batarangKey] = 'parse error'; }
+            }
+            return res.status(404).json({ error: 'Cena nie znaleziona w zadnym batarangu', batarangs: debugInfo });
+        }
+
+        let basePriceValue = priceObj.basePriceValue ?? priceObj.basePrice ?? null;
+        let discountedValue = priceObj.discountedValue ?? priceObj.discountedPrice ?? null;
+
+        if (typeof basePriceValue === 'string') basePriceValue = Math.round(parseFloat(basePriceValue.replace(/[^0-9.]/g, '')) * 100);
+        if (typeof discountedValue === 'string') discountedValue = Math.round(parseFloat(discountedValue.replace(/[^0-9.]/g, '')) * 100);
+
         return res.status(200).json({
-            debug: true,
-            cacheKeys: Object.keys(cache),
-            sku: cache['Sku:' + id + '-E002'] || null,
-            product: cache['Product:' + id] || null,
-            rootQuery: cache['ROOT_QUERY'] || null
+            data: {
+                productRetrieve: {
+                    products: [{
+                        price: {
+                            basePriceValue,
+                            discountedValue,
+                            currencyCode: priceObj.currencyCode ?? null,
+                            discountText: priceObj.discountText ?? null
+                        }
+                    }]
+                }
+            }
         });
 
     } catch (error) {
