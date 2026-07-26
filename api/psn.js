@@ -30,79 +30,27 @@ export default async function handler(req, res) {
 
         const html = await response.text();
         const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
-        if (!match) {
-            return res.status(404).json({ error: 'Brak __NEXT_DATA__' });
-        }
+        if (!match) return res.status(404).json({ error: 'Brak __NEXT_DATA__' });
 
         const nextData = JSON.parse(match[1]);
         const pageProps = nextData?.props?.pageProps;
-
-        // Ceny sa w batarangs -> accessibility-features -> text (JSON string z Apollo cache)
         const batarangsText = pageProps?.batarangs?.['accessibility-features']?.text;
-        if (!batarangsText) {
-            return res.status(404).json({ error: 'Brak batarangs.accessibility-features.text' });
-        }
+        if (!batarangsText) return res.status(404).json({ error: 'Brak batarangsText' });
 
-        // Wyciagnij JSON z tagu <script> wewnatrz stringa HTML
         const innerMatch = batarangsText.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/);
-        if (!innerMatch) {
-            return res.status(404).json({ error: 'Brak inner script w batarangs' });
-        }
+        if (!innerMatch) return res.status(404).json({ error: 'Brak inner script' });
 
         const apolloData = JSON.parse(innerMatch[1]);
         const cache = apolloData?.cache;
+        if (!cache) return res.status(404).json({ error: 'Brak cache' });
 
-        if (!cache) {
-            return res.status(404).json({ error: 'Brak cache w apolloData', keys: Object.keys(apolloData || {}) });
-        }
-
-        // Znajdz klucz Sku z cena w Apollo cache
-        const skuKey = Object.keys(cache).find(k => k.startsWith('Sku:') && k.includes(id) && cache[k]?.price);
-
-        let priceObj = null;
-        if (skuKey) {
-            priceObj = cache[skuKey].price;
-        } else {
-            // Szukaj dowolnego obiektu z currencyCode
-            for (const key of Object.keys(cache)) {
-                const obj = cache[key];
-                if (obj?.price?.currencyCode || obj?.currencyCode) {
-                    priceObj = obj.price || obj;
-                    break;
-                }
-            }
-        }
-
-        if (!priceObj) {
-            return res.status(404).json({
-                error: 'Nie znaleziono ceny w Apollo cache',
-                cacheKeys: Object.keys(cache).slice(0, 30)
-            });
-        }
-
-        let basePriceValue = priceObj.basePriceValue ?? priceObj.basePrice ?? null;
-        let discountedValue = priceObj.discountedValue ?? priceObj.discountedPrice ?? null;
-
-        if (typeof basePriceValue === 'string') {
-            basePriceValue = Math.round(parseFloat(basePriceValue.replace(/[^0-9.]/g, '')) * 100);
-        }
-        if (typeof discountedValue === 'string') {
-            discountedValue = Math.round(parseFloat(discountedValue.replace(/[^0-9.]/g, '')) * 100);
-        }
-
+        // Zwroc pelna zawartosc wszystkich kluczy cache do debugowania
         return res.status(200).json({
-            data: {
-                productRetrieve: {
-                    products: [{
-                        price: {
-                            basePriceValue,
-                            discountedValue,
-                            currencyCode: priceObj.currencyCode ?? null,
-                            discountText: priceObj.discountText ?? null
-                        }
-                    }]
-                }
-            }
+            debug: true,
+            cacheKeys: Object.keys(cache),
+            sku: cache['Sku:' + id + '-E002'] || null,
+            product: cache['Product:' + id] || null,
+            rootQuery: cache['ROOT_QUERY'] || null
         });
 
     } catch (error) {
