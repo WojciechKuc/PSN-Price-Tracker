@@ -37,8 +37,7 @@ export default async function handler(req, res) {
         const batarangs = pageProps?.batarangs;
         if (!batarangs) return res.status(404).json({ error: 'Brak batarangs' });
 
-        // Zbierz wszystkie SKU ze wszystkich batarangow
-        const allSkus = {};
+        // Zbierz wszystkie Product cache entries ze wszystkich batarangow
         const allProducts = {};
 
         for (const batarangKey of Object.keys(batarangs)) {
@@ -52,12 +51,34 @@ export default async function handler(req, res) {
             if (!cache) continue;
 
             for (const key of Object.keys(cache)) {
-                if (key.startsWith('Sku:')) allSkus[key] = cache[key];
                 if (key.startsWith('Product:')) allProducts[key] = cache[key];
             }
         }
 
-        return res.status(200).json({ debug: true, skus: allSkus, products: allProducts });
+        // Znajdz produkt glowny po ID
+        const productKey = `Product:${id}`;
+        const product = allProducts[productKey];
+
+        if (!product) {
+            return res.status(404).json({ error: 'Nie znaleziono produktu w cache' });
+        }
+
+        const price = product?.price;
+        if (!price) {
+            return res.status(404).json({ error: 'Brak danych o cenie dla tego produktu' });
+        }
+
+        const name = product?.name || product?.invariantName || id;
+
+        return res.status(200).json({
+            id,
+            locale,
+            name,
+            basePrice: price.basePrice,
+            discountedPrice: price.discountedPrice,
+            isFree: price.isFree,
+            serviceBranding: price.serviceBranding
+        });
 
     } catch (error) {
         return res.status(500).json({ error: error.message });
