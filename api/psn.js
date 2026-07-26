@@ -9,21 +9,12 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Brak parametrow id lub locale' });
     }
 
-    // PSN publiczne REST API - nie wymaga whitelistingu
-    // locale format: pl-PL -> country=PL, language=pl
     const [lang, country] = locale.split('-');
-    const countryUp = country.toUpperCase();
-    const langLow = lang.toLowerCase();
-
-    const psnUrl = `https://web.np.playstation.com/api/graphql/v1/op?operationName=catalogGetProductById&variables=%7B%22productId%22%3A%22${encodeURIComponent(id)}%22%2C%22country%22%3A%22${countryUp}%22%2C%22language%22%3A%22${langLow}%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%222d26a0b2a2b9e5f7e28a1b3c9d4e6f8a0b2c4e6f8a0b2c4e6f8a0b2c4e6f8a%22%7D%7D`;
-
-    // Fallback: Sony storefront API (publiczne, bez auth)
-    const storeUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/container/${locale}/1/${id}?size=1&start=0&gameContentType=games&platform=ps4`;
+    const localeFormatted = `${lang.toLowerCase()}-${country.toUpperCase()}`;
 
     try {
-        // Proba przez nowe store API
-        const newApiUrl = `https://store.playstation.com/${locale.toLowerCase()}/product/${id}`;
-        
+        const newApiUrl = `https://store.playstation.com/${localeFormatted}/product/${id}`;
+
         const response = await fetch(newApiUrl, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -34,47 +25,65 @@ export default async function handler(req, res) {
         });
 
         if (!response.ok) {
-            return res.status(response.status).json({ error: `Store error: ${response.status}` });
+            return res.status(response.status).json({ error: `Store HTTP: ${response.status}` });
         }
 
         const html = await response.text();
-
-        // Wyciagnij dane z __NEXT_DATA__ (Next.js SSR)
         const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+
         if (!match) {
-            return res.status(404).json({ error: 'Brak __NEXT_DATA__ w odpowiedzi' });
+            return res.status(404).json({ error: 'Brak __NEXT_DATA__' });
         }
 
         const nextData = JSON.parse(match[1]);
-        
-        // Znajdz cene w strukturze Next.js
         const pageProps = nextData?.props?.pageProps;
-        const productData = pageProps?.productDetail || pageProps?.product || pageProps?.data?.product;
-        
-        // Szukamy ceny w roznych miejscach struktury
-        let price = null;
-        
-        if (productData?.price) {
-            const p = productData.price;
-            price = {
-                basePriceValue: p.basePrice ? Math.round(parseFloat(p.basePrice.replace(/[^0-9.]/g, '')) * 100) : null,
-                discountedValue: p.discountedPrice ? Math.round(parseFloat(p.discountedPrice.replace(/[^0-9.]/g, '')) * 100) : null,
-                currencyCode: p.currencyCode || null,
-                discountText: p.discountPercentage ? `-${p.discountPercentage}%` : null
-            };
+
+        // Rekurencyjnie szukaj obiektu zawierajacego currencyCode lub basePriceValue
+        function findPrice(obj, depth = 0) {
+            if (!obj || typeof obj !== 'object' || depth > 10) return null;
+            if (obj.currencyCode || obj.basePriceValue || obj.basePrice) return obj;
+            for (const key of Object.keys(obj)) {
+                const found = findPrice(obj[key], depth + 1);
+                if (found) return found;
+            }
+            return null;
         }
 
-        if (!price) {
-            return res.status(404).json({ 
-                error: 'Nie znaleziono ceny', 
-                keys: Object.keys(pageProps || {}).slice(0, 10) 
+        const rawPrice = findPrice(pageProps);
+
+        if (!rawPrice) {
+            // Zwroc fragment struktury do debugowania
+            return res.status(404).json({
+                error: 'Nie znaleziono ceny w strukturze',
+                pageKeys: Object.keys(pageProps || {}),
+                pageFragment: JSON.stringify(pageProps).slice(0, 800)
             });
+        }
+
+        // Normalizuj cene do formatu oczekiwanego przez index.html
+        // index.html: p.basePriceValue / 100 dla PL/TR/IN, p.discountedValue dla JP
+        let basePriceValue = rawPrice.basePriceValue ?? rawPrice.basePrice ?? null;
+        let discountedValue = rawPrice.discountedValue ?? rawPrice.discountedPrice ?? null;
+
+        // Jesli ceny sa stringami (np. "299.00"), zamien na grosze
+        if (typeof basePriceValue === 'string') {
+            basePriceValue = Math.round(parseFloat(basePriceValue.replace(/[^0-9.]/g, '')) * 100);
+        }
+        if (typeof discountedValue === 'string') {
+            discountedValue = Math.round(parseFloat(discountedValue.replace(/[^0-9.]/g, '')) * 100);
         }
 
         return res.status(200).json({
             data: {
                 productRetrieve: {
-                    products: [{ price }]
+                    products: [{
+                        price: {
+                            basePriceValue,
+                            discountedValue,
+                            currencyCode: rawPrice.currencyCode ?? null,
+                            discountText: rawPrice.discountText ?? null
+                        }
+                    }]
                 }
             }
         });
