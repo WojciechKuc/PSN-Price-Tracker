@@ -326,66 +326,60 @@
         setupPasteHandlers(); 
     };
 
-    async function fetchPricesAuto() {
-        let rawId = document.getElementById('gameId').value.trim();
-        
-        if (!rawId) {
-            return alert("Najpierw wklej Product ID (np. EP9000...) w polu obok przycisku API!");
-        }
-
-        // Jeśli ktoś wklei cały link zamiast ID, ten kod wyłuska sam numer
-        let productId = rawId;
-        if (rawId.includes('product/')) {
-            productId = rawId.split('product/')[1].split('/')[0].split('?')[0];
-        }
-
-        const btn = document.querySelector('.btn-api');
-        const oldText = btn.innerText;
-        btn.innerText = "⏳...";
-
-        const regions = [
-            { code: 'PL', locale: 'pl-PL', input: 'pPL' },
-            { code: 'TR', locale: 'en-TR', input: 'pTR' },
-            { code: 'IN', locale: 'en-IN', input: 'pIN' },
-            { code: 'JP', locale: 'ja-JP', input: 'pJP' }
-        ];
-
-        // Wyświetlanie klepsydry w polach
-        regions.forEach(r => document.getElementById(r.input).value = "⏳...");
-
-        for (const reg of regions) {
-            try {
-                // PAMIĘTAJ: Jeśli otwierasz to z dysku komputera, zamiast '/api/psn' 
-                // musisz wpisać pełny adres swojego Vercela np. 'https://TWOJ-VERCEL.vercel.app/api/psn'
-                const res = await fetch(`/api/psn?id=${productId}&locale=${reg.locale}`);
-                
-                if (!res.ok) throw new Error("Błąd API");
-                const data = await res.json();
-                
-                const p = data?.data?.productRetrieve?.products?.[0]?.price;
-                const inputField = document.getElementById(reg.input);
-                
-                if (p && (p.basePriceValue || p.discountedValue)) {
-                    let val = p.discountedValue || p.basePriceValue;
-                    
-                    // JPY nie ma groszy, reszta ma
-                    if(reg.code === 'JP') {
-                        inputField.value = val;
-                    } else {
-                        inputField.value = (val / 100).toFixed(2);
-                    }
-                } else {
-                    inputField.value = ""; // Brak ceny dla tego regionu
-                }
-            } catch (err) {
-                console.error(`Błąd ${reg.code}:`, err);
-                document.getElementById(reg.input).value = ""; // Czyści przy błędzie
-            }
-        }
-        
-        // Przywrócenie nazwy przycisku
-        btn.innerText = oldText;
+async function fetchPricesAuto() {
+    let rawId = document.getElementById('gameId').value.trim();
+    
+    if (!rawId) {
+        return alert("Najpierw wklej Product ID (np. EP3969...) w polu obok przycisku API!");
     }
+
+    let productId = rawId;
+    if (rawId.includes('product/')) {
+        productId = rawId.split('product/')[1].split('/')[0].split('?')[0];
+    }
+
+    const btn = document.querySelector('.btn-api');
+    const oldText = btn.innerText;
+    btn.innerText = "⏳ Pobieranie...";
+    btn.disabled = true;
+
+    const regions = [
+        { code: 'PL', locale: 'pl-PL', input: 'pPL' },
+        { code: 'TR', locale: 'en-TR', input: 'pTR' },
+        { code: 'IN', locale: 'en-IN', input: 'pIN' },
+        { code: 'JP', locale: 'ja-JP', input: 'pJP' }
+    ];
+
+    // Wyczyszczenie pól na czas pobierania
+    regions.exceptions = regions.forEach(r => document.getElementById(r.input).value = "");
+
+    for (const reg of regions) {
+        try {
+            const res = await fetch(`https://psn-regional-prices.vercel.app/api/psn?id=${productId}&locale=${reg.locale}`);
+            
+            if (!res.ok) throw new Error(`Błąd HTTP: ${res.status}`);
+            const data = await res.json();
+            
+            const p = data?.data?.productRetrieve?.products?.[0]?.price;
+            const inputField = document.getElementById(reg.input);
+            
+            if (p && (p.basePriceValue || p.discountedValue)) {
+                let val = p.discountedValue || p.basePriceValue;
+                
+                if (reg.code === 'JP') {
+                    inputField.value = val;
+                } else {
+                    inputField.value = (val / 100).toFixed(2);
+                }
+            }
+        } catch (err) {
+            console.error(`Błąd ${reg.code}:`, err);
+        }
+    }
+    
+    btn.innerText = oldText;
+    btn.disabled = false;
+}
 </script>
 </body>
 </html>
