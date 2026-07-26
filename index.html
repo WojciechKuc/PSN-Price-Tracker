@@ -350,15 +350,19 @@ async function fetchPricesAuto() {
         { code: 'JP', locale: 'ja-JP', input: 'pJP' }
     ];
 
-    // Wyczyszczenie pól na czas pobierania
-    regions.exceptions = regions.forEach(r => document.getElementById(r.input).value = "");
+    regions.forEach(r => document.getElementById(r.input).value = "");
 
     for (const reg of regions) {
         try {
-            const res = await fetch(`https://psn-regional-prices.vercel.app/api/psn?id=${productId}&locale=${reg.locale}`);
+            const targetUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/container/${reg.locale}/1/${productId}`;
+            // Używamy darmowego proxy CORS, żeby przeglądarka nie blokowała żądania do PSN w jednym pliku HTML
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
             
-            if (!res.ok) throw new Error(`Błąd HTTP: ${res.status}`);
-            const data = await res.json();
+            const res = await fetch(proxyUrl);
+            if (!res.ok) throw new Error("Błąd sieci");
+            
+            const textData = await res.text();
+            const data = JSON.parse(textData);
             
             const p = data?.data?.productRetrieve?.products?.[0]?.price;
             const inputField = document.getElementById(reg.input);
