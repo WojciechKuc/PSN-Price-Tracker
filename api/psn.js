@@ -1,27 +1,29 @@
 export default async function handler(req, res) {
+    // Nagłówki CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
 
-    // Wyciągamy parametry niezależnie od tego, jak Vercel je spakował
-    const query = req.query || {};
-    let id = query.id;
-    let locale = query.locale;
+    // W czystym Node.js na Vercelu parsujemy parametry bezpośrednio z req.url
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const host = req.headers['host'] || 'localhost';
+    const fullUrl = new URL(req.url, `${protocol}://${host}`);
 
-    // Awaryjne wyciąganie z pełnego adresu, gdyby req.query zawiodło
-    if (!id || !locale) {
-        const url = new URL(req.url, `https://${req.headers.host || 'localhost'}`);
-        id = id || url.searchParams.get('id');
-        locale = locale || url.searchParams.get('locale');
-    }
+    const id = fullUrl.searchParams.get('id');
+    const locale = fullUrl.searchParams.get('locale');
 
+    // Jeśli brakuje parametrów, zwracamy jasny komunikat
     if (!id || !locale) {
-        return res.status(400).json({ error: "Brak parametrów", debug: { query, url: req.url } });
+        return res.status(400).json({ error: 'Brak wymaganych parametrów id lub locale' });
     }
 
     try {
         const psnUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/container/${locale}/1/${id}`;
+        
         const response = await fetch(psnUrl, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept-Language': locale
+            }
         });
 
         if (!response.ok) {
