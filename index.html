@@ -69,7 +69,7 @@
     <div class="main-box">
         <div class="search-row"><input type="text" id="searchInp" placeholder="Wpisz nazwę gry..." oninput="syncSearch()"><a id="psLink" href="#" target="_blank" class="btn-search-compact">🔍 ZNAJDŹ ID</a></div>
         <div class="flex-row"><input type="text" id="gameId" placeholder="Product ID (lub link)" style="flex: 2;"><button class="btn-api" onclick="fetchPricesAuto()">⚡ API</button></div>
-        <div class="flex-row"><input type="text" id="gameName" placeholder="Nazwa gry" style="flex: 2;"><select id="gameEd" style="max-width: 150px;"><option>Standard</option><option>Deluxe</option><option>Gold</option><option>Ultimate</option><option>GOTY</option></select></div>
+        <div class="flex-row"><input type="text" id="gameName" placeholder="Nazwa gry" style="flex: 1;"></div>
         <div class="region-grid"><button class="reg-btn bg-pl" onclick="openPsn('pl-pl')">PL 🇵🇱</button><button class="reg-btn bg-tr" onclick="openPsn('en-tr')">TR 🇹🇷</button><button class="reg-btn bg-in" onclick="openPsn('en-in')">IN 🇮🇳</button><button class="reg-btn bg-jp" onclick="openPsn('ja-jp')">JP 🇯🇵</button></div>
         <div class="price-grid">
             <input type="number" id="pPL" placeholder="PLN" step="0.01">
@@ -81,7 +81,7 @@
     </div>
     
     <div class="section-header" style="border-color: var(--ps-blue);"><span style="color:var(--ps-blue); font-weight:bold;">WATCHLISTA</span><input type="text" class="search-bar" id="wSearch" placeholder="Szukaj..." oninput="render()"></div>
-    <table><thead><tr><th>Gra / Edycja</th><th>PLN</th><th>TRY</th><th>INR</th><th>JPY</th><th>Akcje</th></tr></thead><tbody id="wBody"></tbody></table>
+    <table><thead><tr><th>Gra</th><th>PLN</th><th>TRY</th><th>INR</th><th>JPY</th><th>Akcje</th></tr></thead><tbody id="wBody"></tbody></table>
     
     <div class="section-header" style="border-color: #2e7d32;"><span style="color:#2e7d32; font-weight:bold;">KOLEKCJA</span><input type="text" class="search-bar" id="cSearch" placeholder="Szukaj..." oninput="render()"></div>
     <div class="filter-cnt">
@@ -155,8 +155,7 @@
         let id = document.getElementById('gameId').value || Date.now().toString();
         let db = JSON.parse(localStorage.getItem(KEY_W) || '[]');
         const newGame = { 
-            id, name, 
-            ed: document.getElementById('gameEd').value, 
+            id, name,
             pl: document.getElementById('pPL').value, 
             tr: document.getElementById('pTR').value, 
             in: document.getElementById('pIN').value, 
@@ -176,7 +175,6 @@
         if(!g) return;
         document.getElementById('gameId').value = g.id || '';
         document.getElementById('gameName').value = g.name;
-        document.getElementById('gameEd').value = g.ed;
         document.getElementById('pPL').value = g.pl || '';
         document.getElementById('pTR').value = g.tr || '';
         document.getElementById('pIN').value = g.in || '';
@@ -245,7 +243,7 @@
             const min = Math.min(...v);
             const cl = (val) => val === min && min !== Infinity ? 'best-deal' : '';
             return `<tr>
-                <td class="title-cell"><b>${g.name}</b><br><small style="color:#666">${g.ed}</small></td>
+                <td class="title-cell"><b>${g.name}</b></td>
                 <td><div class="${cl(v[0])}">${g.pl || '-'}</div></td>
                 <td><div class="${cl(v[1])}">${g.tr || '-'}<span class="conv-val">${g.tr?(g.tr*rates.TRY).toFixed(2)+' zł':''}</span></div></td>
                 <td><div class="${cl(v[2])}">${g.in || '-'}<span class="conv-val">${g.in?(g.in*rates.INR).toFixed(2)+' zł':''}</span></div></td>
@@ -269,7 +267,7 @@
         document.getElementById('cBody').innerHTML = filteredCollection.map((g, i) => {
             let col = g.reg==='PL'?'#6b1414':g.reg==='TR'?'#4a2168':g.reg==='IN'?'#6b4515':'#bc002d';
             return `<tr>
-                <td class="title-cell"><b>${g.name}</b><br><small style="color:#666">${g.ed}</small></td>
+                <td class="title-cell"><b>${g.name}</b></td>
                 <td><span class="tag-reg" style="background:${col}">${g.reg}</span></td>
                 <td>${g.date}</td>
                 <td><div class="action-group">
@@ -357,7 +355,6 @@
             { code: 'JP', locale: 'ja-JP', input: 'pJP', integer: true }
         ];
 
-        // Wyczysc ceny ORAZ nazwe przed nowym pobieraniem
         regions.forEach(r => document.getElementById(r.input).value = '');
         document.getElementById('gameName').value = '';
 
@@ -377,7 +374,6 @@
                         : val.toFixed(2);
                 }
 
-                // Ustaw nazwe z pierwszej udanej odpowiedzi
                 if (data?.name && !document.getElementById('gameName').value) {
                     document.getElementById('gameName').value = data.name;
                 }
