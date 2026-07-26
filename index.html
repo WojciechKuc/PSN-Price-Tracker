@@ -322,6 +322,42 @@
         setupPasteHandlers(); 
     };
 
+    // Parsuje string cenowy z PSN np. "33,90 zl" -> 33.90 lub "1 234" -> 1234
+    function parsePsnPrice(str) {
+        if (!str || str === 'Niedostepne' || str === 'Bezplatne') return null;
+        // Usun wszystko oprocz cyfr, przecinkow i kropek
+        // Polskie/europejskie: "33,90 zl" -> 33.90
+        // Japonskie: "3,652円" -> 3652
+        // Indyjskie: "1,234.56" -> 1234.56
+        // Tureckie: "1.234,56" -> 1234.56
+        let s = str.replace(/[^0-9.,]/g, '').trim();
+        if (!s) return null;
+        
+        // Sprawdz format: jesli jest kropka I przecinek
+        if (s.includes('.') && s.includes(',')) {
+            // Europejski: 1.234,56 - kropka jako separator tysiecy, przecinek jako dziesietny
+            if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
+                s = s.replace(/\./g, '').replace(',', '.');
+            } else {
+                // Angielski: 1,234.56
+                s = s.replace(/,/g, '');
+            }
+        } else if (s.includes(',')) {
+            // Samo przecinek: moze byc separator tysiecy (JP: "3,652") lub dziesietny (PL: "33,90")
+            const afterComma = s.split(',').pop();
+            if (afterComma.length === 3 && !s.includes('.')) {
+                // Separator tysiecy: "3,652" -> 3652
+                s = s.replace(/,/g, '');
+            } else {
+                // Separator dziesietny: "33,90" -> 33.90
+                s = s.replace(',', '.');
+            }
+        }
+        
+        const val = parseFloat(s);
+        return isNaN(val) ? null : val;
+    }
+
 async function fetchPricesAuto() {
     let rawId = document.getElementById('gameId').value.trim();
     
@@ -346,29 +382,25 @@ async function fetchPricesAuto() {
         { code: 'JP', locale: 'ja-JP', input: 'pJP' }
     ];
 
-    // Waluty bez podjednostek (nie dzielic przez 100)
-    const NO_SUBUNIT = ['JPY', 'INR'];
-
     regions.forEach(r => document.getElementById(r.input).value = "");
 
     for (const reg of regions) {
         try {
             const res = await fetch(`/api/psn?id=${productId}&locale=${reg.locale}`);
-            
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             
             const data = await res.json();
-            const p = data?.data?.productRetrieve?.products?.[0]?.price;
-            const inputField = document.getElementById(reg.input);
-            
-            if (p && (p.basePriceValue || p.discountedValue)) {
-                let val = p.discountedValue || p.basePriceValue;
-                const currency = p.currencyCode || '';
 
-                if (NO_SUBUNIT.includes(currency)) {
-                    inputField.value = val;
-                } else {
-                    inputField.value = (val / 100).toFixed(2);
+            // Nowy format API: { discountedPrice, basePrice }
+            const priceStr = data?.discountedPrice || data?.basePrice;
+            if (!priceStr || data?.isFree) continue;
+
+            const val = parsePsnPrice(priceStr);
+            if (val !== null) {
+                document.getElementById(reg.input).value = val;
+                // Wypelnij nazwe gry jesli puste
+                if (data?.name && !document.getElementById('gameName').value) {
+                    document.getElementById('gameName').value = data.name;
                 }
             }
         } catch (err) {
