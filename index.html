@@ -352,43 +352,32 @@ async function fetchPricesAuto() {
 
     regions.forEach(r => document.getElementById(r.input).value = "");
 
-    try {
-        for (const reg of regions) {
-            try {
-                const targetUrl = `https://store.playstation.com/store/api/chihiro/00_09_000/container/${reg.locale}/1/${productId}`;
-                // Używamy corsproxy.io – działa znacznie szybciej i stabilniej
-                const proxyUrl = `https://corsproxy.io/?` + encodeURIComponent(targetUrl);
+    for (const reg of regions) {
+        try {
+            const res = await fetch(`/api/psn?id=${productId}&locale=${reg.locale}`);
+            
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            
+            const data = await res.json();
+            const p = data?.data?.productRetrieve?.products?.[0]?.price;
+            const inputField = document.getElementById(reg.input);
+            
+            if (p && (p.basePriceValue || p.discountedValue)) {
+                let val = p.discountedValue || p.basePriceValue;
                 
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-                const res = await fetch(proxyUrl, { signal: controller.signal });
-                clearTimeout(timeoutId);
-
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                
-                const data = await res.json();
-                
-                const p = data?.data?.productRetrieve?.products?.[0]?.price;
-                const inputField = document.getElementById(reg.input);
-                
-                if (p && (p.basePriceValue || p.discountedValue)) {
-                    let val = p.discountedValue || p.basePriceValue;
-                    
-                    if (reg.code === 'JP') {
-                        inputField.value = val;
-                    } else {
-                        inputField.value = (val / 100).toFixed(2);
-                    }
+                if (reg.code === 'JP') {
+                    inputField.value = val;
+                } else {
+                    inputField.value = (val / 100).toFixed(2);
                 }
-            } catch (err) {
-                console.warn(`Pominięto region ${reg.code}:`, err.message);
             }
+        } catch (err) {
+            console.warn(`Błąd ${reg.code}:`, err.message);
         }
-    } finally {
-        btn.innerText = oldText;
-        btn.disabled = false;
     }
+    
+    btn.innerText = oldText;
+    btn.disabled = false;
 }
 </script>
 </body>
