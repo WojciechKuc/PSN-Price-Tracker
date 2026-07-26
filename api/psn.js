@@ -37,7 +37,7 @@ export default async function handler(req, res) {
         const batarangs = pageProps?.batarangs;
         if (!batarangs) return res.status(404).json({ error: 'Brak batarangs' });
 
-        // Zbierz caly cache
+        // Zbierz caly cache ze wszystkich batarangow
         const cache = {};
         for (const batarangKey of Object.keys(batarangs)) {
             const text = batarangs[batarangKey]?.text;
@@ -51,14 +51,56 @@ export default async function handler(req, res) {
             Object.assign(cache, c);
         }
 
-        // Zwroc wszystkie klucze i ich top-level pola
-        const summary = {};
-        for (const key of Object.keys(cache)) {
-            const val = cache[key];
-            summary[key] = Object.keys(val || {});
+        const product = cache[`Product:${id}`];
+        const name = product?.name || product?.invariantName || id;
+
+        // 1. Cena bezposrednio na produkcie (VC, passy, dodatki)
+        if (product?.price?.basePrice) {
+            const p = product.price;
+            return res.status(200).json({
+                id, locale, name,
+                basePrice: p.basePrice,
+                discountedPrice: p.discountedPrice,
+                isFree: p.isFree,
+                serviceBranding: p.serviceBranding
+            });
         }
 
-        return res.status(200).json({ cacheKeys: summary });
+        // 2. Cena z GameCTA ADD_TO_CART powiazanego przez webctas
+        if (product?.webctas) {
+            for (const ctaRef of product.webctas) {
+                const ctaKey = ctaRef?.__ref;
+                if (!ctaKey || !ctaKey.startsWith('GameCTA:ADD_TO_CART')) continue;
+                const cta = cache[ctaKey];
+                if (cta?.price?.basePrice) {
+                    const p = cta.price;
+                    return res.status(200).json({
+                        id, locale, name,
+                        basePrice: p.basePrice,
+                        discountedPrice: p.discountedPrice,
+                        isFree: p.isFree,
+                        serviceBranding: p.serviceBranding
+                    });
+                }
+            }
+        }
+
+        // 3. Fallback: szukaj GameCTA:ADD_TO_CART:{id} w cache
+        const ctaFallbackKey = Object.keys(cache).find(
+            k => k.startsWith('GameCTA:ADD_TO_CART:ADD_TO_CART') && k.includes(id) && cache[k]?.price?.basePrice
+        );
+        if (ctaFallbackKey) {
+            const p = cache[ctaFallbackKey].price;
+            return res.status(200).json({
+                id, locale, name,
+                basePrice: p.basePrice,
+                discountedPrice: p.discountedPrice,
+                isFree: p.isFree,
+                serviceBranding: p.serviceBranding
+            });
+        }
+
+        return res.status(404).json({ error: 'Nie znaleziono ceny dla tego produktu w tym regionie' });
 
     } catch (error) {
         return res.status(500).json({ error: error.message });
