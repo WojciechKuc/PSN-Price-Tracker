@@ -2,26 +2,13 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
 
-    let id, locale;
-
-    // 1. Próba pobrania przez standardowy Node.js / Express (req.query)
-    if (req.query) {
-        id = req.query.id;
-        locale = req.query.locale;
-    }
-
-    // 2. Awaryjne parsowanie z adresu URL (dla Edge / Web Request / Vercel Runtime)
-    if (!id || !locale) {
-        try {
-            const host = (req.headers && typeof req.headers.get === 'function') 
-                ? req.headers.get('host') 
-                : (req.headers?.host || 'localhost');
-                
-            const fullUrl = new URL(req.url, `https://${host}`);
-            id = id || fullUrl.searchParams.get('id');
-            locale = locale || fullUrl.searchParams.get('locale');
-        } catch (e) {}
-    }
+    // Bezpośrednie parsowanie adresu URL – całkowicie niezależne od Vercela i req.query
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const host = req.headers['host'] || 'localhost';
+    const fullUrl = new URL(req.url, `${protocol}://${host}`);
+    
+    const id = fullUrl.searchParams.get('id');
+    const locale = fullUrl.searchParams.get('locale');
 
     if (!id || !locale) {
         return res.status(400).json({ error: 'Brak wymaganych parametrów id lub locale' });
