@@ -28,7 +28,6 @@
     .price-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
     .btn-save { background: #2e7d32; color: white; border: none; padding: 15px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; text-transform: uppercase; }
     .btn-save:hover { background: #1b5e20; }
-    /* MODAL */
     #regionModal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; }
     .modal-content { background: #222; padding: 25px; border-radius: 10px; border: 1px solid #444; width: 300px; }
     .modal-btn { background: var(--ps-blue); color: white; border: none; padding: 12px; width: 100%; margin-top: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
@@ -43,10 +42,8 @@
     .btn-edit:hover { background: #ef6c00; color: white; border-color: #ef6c00; }
     .btn-buy:hover { background: #2e7d32; color: white; border-color: #2e7d32; }
     .btn-del:hover { background: #8a1c1c; color: white; border-color: #8a1c1c; }
-    
     @keyframes gold-pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(255, 215, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); } }
     .best-deal { color: var(--best-price); font-weight: bold; border: 1px solid var(--best-price); padding: 2px 6px; border-radius: 4px; display: inline-block; animation: gold-pulse 2s infinite;}
-    
     .conv-val { display: block; font-size: 9px; color: #666; margin-top: 2px; }
     .tag-reg { font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: bold; color: white; }
     .filter-cnt { display: flex; gap: 8px; margin-bottom: 10px; padding: 0 5px; }
@@ -66,7 +63,7 @@
 </style>
 </head>
 <body>
-<div id="regionModal"><div class="modal-content"><h3 style="margin-top:0; color:#ccc">Gdzie kupiono?</h3><select id="modalRegionSelect"></select><button class="modal-btn" onclick="confirmMove()">POTWIERDŹ</button><button class="modal-btn" style="background:#444;" onclick="closeModal()">ANULUJ</button></div></div>
+<div id="regionModal"><div class="modal-content"><h3 style="margin-top:0; color:#ccc">Gdzie kupiono?</h3><select id="modalRegionSelect"></select><button class="modal-btn" onclick="confirmMove()">POTWIERDź</button><button class="modal-btn" style="background:#444;" onclick="closeModal()">ANULUJ</button></div></div>
 <div class="container">
     <div class="top-bar"><div id="ratesDisplay" class="rates-info">Kursy walut: Pobieranie...</div><div><button class="btn-backup" onclick="exportData()">📤 EKSPORT</button><button class="btn-backup" onclick="document.getElementById('importFile').click()">📥 IMPORT</button><input type="file" id="importFile" style="display:none" onchange="importData(this)"></div></div>
     <div class="main-box">
@@ -75,10 +72,10 @@
         <div class="flex-row"><input type="text" id="gameName" placeholder="Nazwa gry" style="flex: 2;"><select id="gameEd" style="max-width: 150px;"><option>Standard</option><option>Deluxe</option><option>Gold</option><option>Ultimate</option><option>GOTY</option></select></div>
         <div class="region-grid"><button class="reg-btn bg-pl" onclick="openPsn('pl-pl')">PL 🇵🇱</button><button class="reg-btn bg-tr" onclick="openPsn('en-tr')">TR 🇹🇷</button><button class="reg-btn bg-in" onclick="openPsn('en-in')">IN 🇮🇳</button><button class="reg-btn bg-jp" onclick="openPsn('ja-jp')">JP 🇯🇵</button></div>
         <div class="price-grid">
-            <input type="number" id="pPL" placeholder="PLN" step="any">
-            <input type="number" id="pTR" placeholder="TRY" step="any">
-            <input type="number" id="pIN" placeholder="INR" step="any">
-            <input type="number" id="pJP" placeholder="JPY" step="any">
+            <input type="number" id="pPL" placeholder="PLN" step="0.01">
+            <input type="number" id="pTR" placeholder="TRY" step="0.01">
+            <input type="number" id="pIN" placeholder="INR" step="0.01">
+            <input type="number" id="pJP" placeholder="JPY" step="1">
         </div>
         <button class="btn-save" onclick="saveGame()">ZAPISZ GRĘ</button>
     </div>
@@ -106,6 +103,9 @@
     let tempId = null;
     let filterReg = 'ALL';
 
+    // Waluty calkowite (bez groszy)
+    const INTEGER_CURRENCIES = ['JPY'];
+
     async function fetchRates() {
         try {
             const res = await fetch('https://open.er-api.com/v6/latest/PLN');
@@ -127,7 +127,6 @@
             el.addEventListener('paste', function(e) {
                 e.preventDefault(); 
                 let txt = (e.clipboardData || window.clipboardData).getData('text').trim();
-                
                 if(id === 'pIN') {
                     txt = txt.replace(/,/g, '').replace(/[^0-9.]/g, '');
                 } else if (id === 'pJP') {
@@ -137,7 +136,6 @@
                     txt = txt.replace(/,/g, '.');
                     txt = txt.replace(/[^0-9.]/g, '');
                 }
-                
                 this.value = txt; 
             });
         });
@@ -160,7 +158,6 @@
         const name = document.getElementById('gameName').value;
         if(!name) return alert("Podaj nazwę gry!");
         let id = document.getElementById('gameId').value || Date.now().toString();
-        
         let db = JSON.parse(localStorage.getItem(KEY_W) || '[]');
         const newGame = { 
             id, name, 
@@ -170,10 +167,8 @@
             in: document.getElementById('pIN').value, 
             jp: document.getElementById('pJP').value 
         };
-
         const idx = db.findIndex(x => x.id == id);
         if (idx > -1) db[idx] = newGame; else db.push(newGame);
-        
         localStorage.setItem(KEY_W, JSON.stringify(db));
         ['gameId','gameName','pPL','pTR','pIN','pJP'].forEach(f => document.getElementById(f).value = '');
         render();
@@ -322,95 +317,84 @@
         setupPasteHandlers(); 
     };
 
-    // Parsuje string cenowy z PSN np. "33,90 zl" -> 33.90 lub "1 234" -> 1234
     function parsePsnPrice(str) {
         if (!str || str === 'Niedostepne' || str === 'Bezplatne') return null;
-        // Usun wszystko oprocz cyfr, przecinkow i kropek
-        // Polskie/europejskie: "33,90 zl" -> 33.90
-        // Japonskie: "3,652円" -> 3652
-        // Indyjskie: "1,234.56" -> 1234.56
-        // Tureckie: "1.234,56" -> 1234.56
         let s = str.replace(/[^0-9.,]/g, '').trim();
         if (!s) return null;
-        
-        // Sprawdz format: jesli jest kropka I przecinek
         if (s.includes('.') && s.includes(',')) {
-            // Europejski: 1.234,56 - kropka jako separator tysiecy, przecinek jako dziesietny
             if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
                 s = s.replace(/\./g, '').replace(',', '.');
             } else {
-                // Angielski: 1,234.56
                 s = s.replace(/,/g, '');
             }
         } else if (s.includes(',')) {
-            // Samo przecinek: moze byc separator tysiecy (JP: "3,652") lub dziesietny (PL: "33,90")
             const afterComma = s.split(',').pop();
             if (afterComma.length === 3 && !s.includes('.')) {
-                // Separator tysiecy: "3,652" -> 3652
                 s = s.replace(/,/g, '');
             } else {
-                // Separator dziesietny: "33,90" -> 33.90
                 s = s.replace(',', '.');
             }
         }
-        
         const val = parseFloat(s);
         return isNaN(val) ? null : val;
     }
 
-async function fetchPricesAuto() {
-    let rawId = document.getElementById('gameId').value.trim();
-    
-    if (!rawId) {
-        return alert("Najpierw wklej Product ID (np. EP3969...) w polu obok przycisku API!");
-    }
+    async function fetchPricesAuto() {
+        let rawId = document.getElementById('gameId').value.trim();
+        if (!rawId) {
+            return alert("Najpierw wklej Product ID (np. EP3969...) w polu obok przycisku API!");
+        }
 
-    let productId = rawId;
-    if (rawId.includes('product/')) {
-        productId = rawId.split('product/')[1].split('/')[0].split('?')[0];
-    }
+        let productId = rawId;
+        if (rawId.includes('product/')) {
+            productId = rawId.split('product/')[1].split('/')[0].split('?')[0];
+        }
 
-    const btn = document.querySelector('.btn-api');
-    const oldText = btn.innerText;
-    btn.innerText = "⏳ Pobieranie...";
-    btn.disabled = true;
+        const btn = document.querySelector('.btn-api');
+        const oldText = btn.innerText;
+        btn.innerText = "⏳ Pobieranie...";
+        btn.disabled = true;
 
-    const regions = [
-        { code: 'PL', locale: 'pl-PL', input: 'pPL' },
-        { code: 'TR', locale: 'en-TR', input: 'pTR' },
-        { code: 'IN', locale: 'en-IN', input: 'pIN' },
-        { code: 'JP', locale: 'ja-JP', input: 'pJP' }
-    ];
+        const regions = [
+            { code: 'PL', locale: 'pl-PL', input: 'pPL', integer: false },
+            { code: 'TR', locale: 'en-TR', input: 'pTR', integer: false },
+            { code: 'IN', locale: 'en-IN', input: 'pIN', integer: false },
+            { code: 'JP', locale: 'ja-JP', input: 'pJP', integer: true }
+        ];
 
-    regions.forEach(r => document.getElementById(r.input).value = "");
+        // Wyczysc ceny ORAZ nazwe przed nowym pobieraniem
+        regions.forEach(r => document.getElementById(r.input).value = '');
+        document.getElementById('gameName').value = '';
 
-    for (const reg of regions) {
-        try {
-            const res = await fetch(`/api/psn?id=${productId}&locale=${reg.locale}`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            
-            const data = await res.json();
+        for (const reg of regions) {
+            try {
+                const res = await fetch(`/api/psn?id=${productId}&locale=${reg.locale}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
 
-            // Nowy format API: { discountedPrice, basePrice }
-            const priceStr = data?.discountedPrice || data?.basePrice;
-            if (!priceStr || data?.isFree) continue;
+                const priceStr = data?.discountedPrice || data?.basePrice;
+                if (!priceStr || data?.isFree) continue;
 
-            const val = parsePsnPrice(priceStr);
-            if (val !== null) {
-                document.getElementById(reg.input).value = val;
-                // Wypelnij nazwe gry jesli puste
+                const val = parsePsnPrice(priceStr);
+                if (val !== null) {
+                    // JPY = liczba calkowita, reszta z 2 miejscami po przecinku
+                    document.getElementById(reg.input).value = reg.integer
+                        ? Math.round(val)
+                        : val.toFixed(2);
+                }
+
+                // Ustaw nazwe z pierwszej udanej odpowiedzi
                 if (data?.name && !document.getElementById('gameName').value) {
                     document.getElementById('gameName').value = data.name;
                 }
+            } catch (err) {
+                console.warn(`Błąd ${reg.code}:`, err.message);
             }
-        } catch (err) {
-            console.warn(`Błąd ${reg.code}:`, err.message);
         }
+
+        btn.innerText = oldText;
+        btn.disabled = false;
     }
-    
-    btn.innerText = oldText;
-    btn.disabled = false;
-}
 </script>
 </body>
 </html>
