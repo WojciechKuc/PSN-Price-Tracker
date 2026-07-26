@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PSN Manager v11.2 - Smart Paste (JP Edition)</title>
 <style>
-    :root {--ps-blue: #0056a3;--ps-dark: #121212;--ps-card: #1e1e1e;--ps-text: #d0d0d0;--best-price: #ffd700;--border: #333;--btn-pl: #6b1414;--btn-tr: #4a2168;--btn-in: #6b4515;--btn-jp: #bc002d;--btn-api: #6a1b9a;}
+    :root {--ps-blue: #0056a3;--ps-dark: #121212;--ps-card: #1e1e1e;--ps-text: #d0d0d0;--best-price: #ffd700;--border: #333;--btn-pl: #6b1414;--btn-tr: #4a2168;--btn-in: #6b4515;--btn-jp: #bc002d;}
     body { font-family: 'Segoe UI', sans-serif; background: var(--ps-dark); color: var(--ps-text); margin: 0; padding: 20px; }
     .container { max-width: 1000px; margin: 0 auto; }
     .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
@@ -20,7 +20,6 @@
     .flex-row { display: flex; gap: 10px; margin-bottom: 15px; }
     input, select {background: #252525; border: 1px solid var(--border); color: white;padding: 12px; border-radius: 6px; outline: none; font-size: 14px;}
     input:focus { border-color: #555; }
-    .btn-api { background: var(--btn-api); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; padding: 0 20px; white-space: nowrap; }
     .region-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
     .reg-btn { padding: 10px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 12px; transition: 0.2s; }
     .bg-pl { background: var(--btn-pl); } .bg-tr { background: var(--btn-tr); } .bg-in { background: var(--btn-in); } .bg-jp { background: var(--btn-jp); }
@@ -71,7 +70,6 @@
     <div class="top-bar"><div id="ratesDisplay" class="rates-info">Kursy walut: Pobieranie...</div><div><button class="btn-backup" onclick="exportData()">📤 EKSPORT</button><button class="btn-backup" onclick="document.getElementById('importFile').click()">📥 IMPORT</button><input type="file" id="importFile" style="display:none" onchange="importData(this)"></div></div>
     <div class="main-box">
         <div class="search-row"><input type="text" id="searchInp" placeholder="Wpisz nazwę gry..." oninput="syncSearch()"><a id="psLink" href="#" target="_blank" class="btn-search-compact">🔍 ZNAJDŹ ID</a></div>
-        <div class="flex-row"><input type="text" id="gameId" placeholder="Product ID (lub link)" style="flex: 2;"><button class="btn-api" onclick="alert('API soon...')">⚡ API</button></div>
         <div class="flex-row"><input type="text" id="gameName" placeholder="Nazwa gry" style="flex: 2;"><select id="gameEd" style="max-width: 150px;"><option>Standard</option><option>Deluxe</option><option>Gold</option><option>Ultimate</option><option>GOTY</option></select></div>
         <div class="region-grid"><button class="reg-btn bg-pl" onclick="openPsn('pl-pl')">PL 🇵🇱</button><button class="reg-btn bg-tr" onclick="openPsn('en-tr')">TR 🇹🇷</button><button class="reg-btn bg-in" onclick="openPsn('en-in')">IN 🇮🇳</button><button class="reg-btn bg-jp" onclick="openPsn('ja-jp')">JP 🇯🇵</button></div>
         <div class="price-grid">
