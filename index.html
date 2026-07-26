@@ -129,13 +129,10 @@
                 let txt = (e.clipboardData || window.clipboardData).getData('text').trim();
                 
                 if(id === 'pIN') {
-                    // Indie: Usuwamy przecinki (tysiące), zostawiamy kropkę (grosze)
                     txt = txt.replace(/,/g, '').replace(/[^0-9.]/g, '');
                 } else if (id === 'pJP') {
-                    // Japonia: Brak groszy. Usuwamy przecinki (tysiące) i wszystko inne
                     txt = txt.replace(/,/g, '').replace(/[^0-9]/g, '');
                 } else {
-                    // TR, PL: Usuwamy kropki (tysiące w TR), zmieniamy przecinek na kropkę
                     txt = txt.replace(/\./g, '');
                     txt = txt.replace(/,/g, '.');
                     txt = txt.replace(/[^0-9.]/g, '');
@@ -305,7 +302,6 @@
         const r = new FileReader(); 
         r.onload = e => { 
             const d = JSON.parse(e.target.result); 
-            // Fix imported data mapping 'ua' to 'jp' if migrating from older version
             if (d.w) {
                 let parsedW = JSON.parse(d.w);
                 parsedW = parsedW.map(item => { if(item.ua) { item.jp = item.ua; delete item.ua; } return item; });
@@ -350,6 +346,9 @@ async function fetchPricesAuto() {
         { code: 'JP', locale: 'ja-JP', input: 'pJP' }
     ];
 
+    // Waluty bez podjednostek (nie dzielic przez 100)
+    const NO_SUBUNIT = ['JPY', 'INR'];
+
     regions.forEach(r => document.getElementById(r.input).value = "");
 
     for (const reg of regions) {
@@ -364,8 +363,9 @@ async function fetchPricesAuto() {
             
             if (p && (p.basePriceValue || p.discountedValue)) {
                 let val = p.discountedValue || p.basePriceValue;
-                
-                if (reg.code === 'JP') {
+                const currency = p.currencyCode || '';
+
+                if (NO_SUBUNIT.includes(currency)) {
                     inputField.value = val;
                 } else {
                     inputField.value = (val / 100).toFixed(2);
