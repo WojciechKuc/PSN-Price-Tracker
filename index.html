@@ -74,7 +74,7 @@
         <div class="price-grid">
             <input type="number" id="pPL" placeholder="PLN" step="0.01">
             <input type="number" id="pTR" placeholder="TRY" step="0.01">
-            <input type="number" id="pIN" placeholder="INR" step="0.01">
+            <input type="number" id="pIN" placeholder="INR" step="1">
             <input type="number" id="pJP" placeholder="JPY" step="1">
         </div>
         <button class="btn-save" onclick="saveGame()">ZAPISZ GRĘ</button>
@@ -103,9 +103,6 @@
     let tempId = null;
     let filterReg = 'ALL';
 
-    // Waluty calkowite (bez groszy)
-    const INTEGER_CURRENCIES = ['JPY'];
-
     async function fetchRates() {
         try {
             const res = await fetch('https://open.er-api.com/v6/latest/PLN');
@@ -127,9 +124,7 @@
             el.addEventListener('paste', function(e) {
                 e.preventDefault(); 
                 let txt = (e.clipboardData || window.clipboardData).getData('text').trim();
-                if(id === 'pIN') {
-                    txt = txt.replace(/,/g, '').replace(/[^0-9.]/g, '');
-                } else if (id === 'pJP') {
+                if(id === 'pIN' || id === 'pJP') {
                     txt = txt.replace(/,/g, '').replace(/[^0-9]/g, '');
                 } else {
                     txt = txt.replace(/\./g, '');
@@ -358,7 +353,7 @@
         const regions = [
             { code: 'PL', locale: 'pl-PL', input: 'pPL', integer: false },
             { code: 'TR', locale: 'en-TR', input: 'pTR', integer: false },
-            { code: 'IN', locale: 'en-IN', input: 'pIN', integer: false },
+            { code: 'IN', locale: 'en-IN', input: 'pIN', integer: true },
             { code: 'JP', locale: 'ja-JP', input: 'pJP', integer: true }
         ];
 
@@ -377,7 +372,6 @@
 
                 const val = parsePsnPrice(priceStr);
                 if (val !== null) {
-                    // JPY = liczba calkowita, reszta z 2 miejscami po przecinku
                     document.getElementById(reg.input).value = reg.integer
                         ? Math.round(val)
                         : val.toFixed(2);
