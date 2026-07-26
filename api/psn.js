@@ -1,187 +1,93 @@
-async function tryHtmlStore(id, localeFormatted, rawLocale) {
-    const storeUrl = `https://store.playstation.com/${localeFormatted}/product/${id}`;
+function extractJsonScripts(text) {
+    const matches = [...text.matchAll(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/g)];
+    return matches.map(m => m[1]).filter(Boolean);
+}
 
-    const response = await fetch(storeUrl, {
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml',
-            'Accept-Language': rawLocale,
-            'Referer': 'https://store.playstation.com/'
+function pickPrice(price) {
+    if (!price) return null;
+
+    const basePrice =
+        price.basePrice ??
+        price.regularPrice ??
+        price.fullPrice ??
+        price.displayPrice ??
+        null;
+
+    const discountedPrice =
+        price.discountedPrice ??
+        price.salePrice ??
+        price.offerPrice ??
+        basePrice ??
+        null;
+
+    const isFree = Boolean(price.isFree) || basePrice === 'Free' || discountedPrice === 'Free';
+
+    if (!basePrice && !discountedPrice && !isFree) return null;
+
+    return {
+        basePrice,
+        discountedPrice,
+        isFree,
+        serviceBranding: price.serviceBranding ?? null
+    };
+}
+
+function findAnyPrice(cache, id) {
+    const directProduct = cache[`Product:${id}`];
+    if (directProduct) {
+        const direct = pickPrice(directProduct.price);
+        if (direct) {
+            return {
+                name: directProduct.name || directProduct.invariantName || id,
+                ...direct,
+                source: 'product-direct'
+            };
         }
-    });
 
-    if (!response.ok) {
-        throw new Error(`Store HTTP: ${response.status}`);
-    }
-
-    const html = await response.text();
-    const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
-    if (!match) return null;
-
-    let nextData;
-    try {
-        nextData = JSON.parse(match[1]);
-    } catch {
-        return null;
-    }
-
-    const pageProps = nextData?.props?.pageProps;
-    const batarangs = pageProps?.batarangs;
-    if (!batarangs || typeof batarangs !== 'object') {
-        return null;
-    }
-
-    const cache = {};
-    for (const batarangKey of Object.keys(batarangs)) {
-        const text = batarangs[batarangKey]?.text;
-        if (!text) continue;
-
-        const innerMatch = text.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/);
-        if (!innerMatch) continue;
-
-        try {
-            const apolloData = JSON.parse(innerMatch[1]);
-            const c = apolloData?.cache;
-            if (c) Object.assign(cache, c);
-        } catch {}
-    }
-
-    const product = cache[`Product:${id}`];
-    if (!product) return null;
-
-    const name = product?.name || product?.invariantName || id;
-
-    if (product?.price && (product.price.basePrice || product.price.discountedPrice || product.price.isFree)) {
-        const p = product.price;
-        return {
-            id,
-            locale: rawLocale,
-            name,
-            basePrice: p.basePrice ?? null,
-            discountedPrice: p.discountedPrice ?? null,
-            isFree: !!p.isFree,
-            serviceBranding: p.serviceBranding ?? null,
-            source: 'html-product'
-        };
-    }
-
-    if (Array.isArray(product?.webctas)) {
-        for (const ctaRef of product.webctas) {
-            const ctaKey = ctaRef?.__ref;
-            if (!ctaKey || !ctaKey.startsWith('GameCTA:')) continue;
-
-            const cta = cache[ctaKey];
-            if (cta?.price && (cta.price.basePrice || cta.price.discountedPrice || cta.price.isFree)) {
-                const p = cta.price;
-                return {
-                    id,
-                    locale: rawLocale,
-                    name,
-                    basePrice: p.basePrice ?? null,
-                    discountedPrice: p.discountedPrice ?? null,
-                    isFree: !!p.isFree,
-                    serviceBranding: p.serviceBranding ?? null,
-                    source: 'html-cta'
-                };
+        if (Array.isArray(directProduct.webctas)) {
+            for (const ref of directProduct.webctas) {
+                const key = ref?.__ref;
+                if (!key) continue;
+                const cta = cache[key];
+                const ctaPrice = pickPrice(cta?.price);
+                if (ctaPrice) {
+                    return {
+                        name: directProduct.name || directProduct.invariantName || id,
+                        ...ctaPrice,
+                        source: 'product-webcta'
+                    };
+                }
             }
         }
     }
 
-    const ctaFallbackKey = Object.keys(cache).find(
-        k =>
-            k.startsWith('GameCTA:') &&
-            k.includes(id) &&
-            cache[k]?.price &&
-            (cache[k].price.basePrice || cache[k].price.discountedPrice || cache[k].price.isFree)
-    );
+    for (const [key, value] of Object.entries(cache)) {
+        if (!value || typeof value !== 'object') continue;
 
-    if (ctaFallbackKey) {
-        const p = cache[ctaFallbackKey].price;
-        return {
-            id,
-            locale: rawLocale,
-            name,
-            basePrice: p.basePrice ?? null,
-            discountedPrice: p.discountedPrice ?? null,
-            isFree: !!p.isFree,
-            serviceBranding: p.serviceBranding ?? null,
-            source: 'html-cta-fallback'
-        };
-    }
+        const price = pickPrice(value.price);
+        if (!price) continue;
 
-    return {
-        id,
-        locale: rawLocale,
-        name,
-        source: 'html-no-price'
-    };
-}
+        const keyHasId = key.includes(id);
+        const valueHasId =
+            value.productId === id ||
+            value.id === id ||
+            value.webctas?.some?.(x => x?.__ref?.includes?.(id));
 
-async function tryGraphqlStore(id, localeFormatted, rawLocale) {
-    const variables = {
-        productId: id,
-        locale: localeFormatted
-    };
-
-    const gqlUrl =
-        'https://web.np.playstation.com/api/graphql/v1/op?' +
-        'operationName=catalogGetProductById&variables=' +
-        encodeURIComponent(JSON.stringify(variables));
-
-    const response = await fetch(gqlUrl, {
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Accept': 'application/json',
-            'Accept-Language': rawLocale,
-            'Referer': `https://store.playstation.com/${localeFormatted}/product/${id}`
+        if (keyHasId || valueHasId) {
+            return {
+                name: value.name || value.invariantName || directProduct?.name || id,
+                ...price,
+                source: `cache-scan:${key}`
+            };
         }
-    });
-
-    if (!response.ok) {
-        throw new Error(`GraphQL HTTP: ${response.status}`);
     }
 
-    const data = await response.json();
-
-    const product =
-        data?.data?.catalogGetProductById?.product ||
-        data?.data?.catalogGetProductById ||
-        data?.data?.product ||
-        null;
-
-    if (!product) return null;
-
-    const name =
-        product?.name ||
-        product?.localizedName ||
-        product?.invariantName ||
-        id;
-
-    const price =
-        product?.price ||
-        product?.defaultSku?.price ||
-        product?.skus?.[0]?.price ||
-        null;
-
-    if (!price) {
-        return {
-            id,
-            locale: rawLocale,
-            name,
-            source: 'graphql-no-price'
-        };
-    }
-
-    return {
-        id,
-        locale: rawLocale,
-        name,
-        basePrice: price.basePrice ?? price.regularPrice ?? null,
-        discountedPrice: price.discountedPrice ?? price.salePrice ?? null,
-        isFree: !!price.isFree,
-        serviceBranding: price.serviceBranding ?? null,
-        source: 'graphql'
-    };
+    return directProduct
+        ? {
+              name: directProduct.name || directProduct.invariantName || id,
+              source: 'product-no-price'
+          }
+        : null;
 }
 
 export default async function handler(req, res) {
@@ -202,32 +108,82 @@ export default async function handler(req, res) {
 
     const [lang, country] = parts;
     const localeFormatted = `${lang.toLowerCase()}-${country.toUpperCase()}`;
+    const storeUrl = `https://store.playstation.com/${localeFormatted}/product/${id}`;
 
     try {
-        try {
-            const htmlResult = await tryHtmlStore(id, localeFormatted, locale);
-            if (htmlResult && (htmlResult.basePrice || htmlResult.discountedPrice || htmlResult.isFree)) {
-                return res.status(200).json(htmlResult);
+        const response = await fetch(storeUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml',
+                'Accept-Language': locale,
+                'Referer': 'https://store.playstation.com/'
             }
-        } catch {}
+        });
 
-        try {
-            const gqlResult = await tryGraphqlStore(id, localeFormatted, locale);
-            if (gqlResult && (gqlResult.basePrice || gqlResult.discountedPrice || gqlResult.isFree)) {
-                return res.status(200).json(gqlResult);
-            }
-
-            if (gqlResult?.name) {
-                return res.status(404).json({
-                    error: 'Produkt znaleziony, ale bez ceny w tym regionie',
-                    ...gqlResult
-                });
-            }
-        } catch (gqlError) {
-            return res.status(502).json({ error: gqlError.message });
+        if (!response.ok) {
+            return res.status(response.status).json({ error: `Store HTTP: ${response.status}` });
         }
 
-        return res.status(404).json({ error: 'Nie znaleziono ceny dla tego produktu w tym regionie' });
+        const html = await response.text();
+
+        const nextDataMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+        if (!nextDataMatch) {
+            return res.status(404).json({ error: 'Brak __NEXT_DATA__' });
+        }
+
+        let nextData;
+        try {
+            nextData = JSON.parse(nextDataMatch[1]);
+        } catch (e) {
+            return res.status(500).json({ error: 'Nie udalo sie sparsowac __NEXT_DATA__' });
+        }
+
+        const pageProps = nextData?.props?.pageProps || {};
+        const cache = {};
+
+        const batarangs = pageProps?.batarangs;
+        if (batarangs && typeof batarangs === 'object') {
+            for (const key of Object.keys(batarangs)) {
+                const text = batarangs[key]?.text;
+                if (!text) continue;
+
+                for (const jsonText of extractJsonScripts(text)) {
+                    try {
+                        const parsed = JSON.parse(jsonText);
+                        if (parsed?.cache && typeof parsed.cache === 'object') {
+                            Object.assign(cache, parsed.cache);
+                        }
+                    } catch {}
+                }
+            }
+        }
+
+        const priceResult = findAnyPrice(cache, id);
+
+        if (priceResult?.basePrice || priceResult?.discountedPrice || priceResult?.isFree) {
+            return res.status(200).json({
+                id,
+                locale,
+                name: priceResult.name || id,
+                basePrice: priceResult.basePrice ?? null,
+                discountedPrice: priceResult.discountedPrice ?? null,
+                isFree: !!priceResult.isFree,
+                serviceBranding: priceResult.serviceBranding ?? null
+            });
+        }
+
+        if (priceResult?.name) {
+            return res.status(404).json({
+                error: 'Produkt znaleziony, ale bez ceny w tym regionie',
+                id,
+                locale,
+                name: priceResult.name
+            });
+        }
+
+        return res.status(404).json({
+            error: 'Nie znaleziono ceny dla tego produktu w tym regionie'
+        });
     } catch (error) {
         return res.status(500).json({ error: error.message });
     }
