@@ -2,10 +2,14 @@
   "version": 2,
   "builds": [
     { "src": "api/psn.js", "use": "@vercel/node" },
-    { "src": "index.html", "use": "@vercel/static" }
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "speed-insights-init.js", "use": "@vercel/static" },
+    { "src": "public/**", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/api/psn", "dest": "/api/psn.js" },
+    { "src": "/speed-insights-init.js", "dest": "/speed-insights-init.js" },
+    { "src": "/public/(.*)", "dest": "/public/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

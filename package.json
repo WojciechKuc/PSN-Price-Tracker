@@ -4,5 +4,24 @@
   "private": true,
   "engines": {
     "node": "20.x"
+  },
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WojciechKuc/PSN-Price-Tracker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/WojciechKuc/PSN-Price-Tracker/issues"
+  },
+  "homepage": "https://github.com/WojciechKuc/PSN-Price-Tracker#readme",
+  "dependencies": {
+    "@vercel/speed-insights": "^2.0.0"
   }
 }
